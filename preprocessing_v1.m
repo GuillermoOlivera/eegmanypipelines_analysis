@@ -2,48 +2,50 @@
 clear all
 clc
 
-% folder = 'C:\Users\eeg\Desktop\eeg';
 folder = 'G:\_EEGManyPipelines\EMP_data\eeg_brainvision\';
-folder_subject_match = 'G:\_EEGManyPipelines\EMP_data\eeg_brainvision\*.dat';
-
+folder_generated_data = 'G:\_EEGManyPipelines\EMP_data\eeg_brainvision\_generated';
+folder_subject_match = 'G:\_EEGManyPipelines\EMP_data\eeg_brainvision\*.vhdr';
+folder_subject_root = fileparts(folder_subject_match);
 subject_files = ls(folder_subject_match);
-subject_number = size(subject_files, 1);
-% subject_names = {'EMP01'};
+subject_total = size(subject_files, 1);
 
-subjects_to_use = [1];
-
+%% Choose subjects and electrodes (channels)
+subjects_to_use = 1:subject_total;
 num_subjects = length(subjects_to_use);
 num_electrodes = 72;
 num_conditions = 2; % man-made/natural-enviro
 
-% preallocate empty matrices
+%% Memory pre-allocation
 ERPs_valid= zeros(num_electrodes, num_conditions, num_subjects);
-% time points, sujects, conditions, electrodes
 all_ERPs = zeros(400, num_subjects, num_conditions, num_electrodes);
 
 all_segments_erp = struct();
 
+%%
 for subject = subjects_to_use
-    subject_name = erase(subject_files(subject, :), '.dat');
-    folder_name = [folder '\subj_' num2str(subject)];
-    file_name = fullfile(folder_name, subject_name);
+    subject_root_vhdr_name = subject_files(subject, :);
+    subject_root_name = erase(subject_root_vhdr_name, '.vhdr');
     
-    %% responses
+    %% Save EEG data as .mat file
+    subject_vhdr_filepath = fullfile(folder_subject_root, subject_root_name);
+    vmrk_to_mat(subject_vhdr_filepath, folder_generated_data);
+    
+    %% Trials
     number_of_trials = 1200;
     total_trigger_count = 0;
     
-    %% get trigger times from .vmrk file
+    %% Get trigger times from .vmrk file
     all_triggers = zeros(number_of_trials,2);
+    subject_root_vmrk_name = [subject_root_name '.vmrk'];  % the name of the .vmrk file
+    subject_vmrk_filepath = fullfile(folder_subject_root, subject_root_vmrk_name);
+    all_triggers = read_triggers_from_vmrk(subject_vmrk_filepath);
     
-    marker_filename = [file_name '.vmrk'];  % the name of the .vmrk file
-    all_triggers = read_triggers_from_vmrk(marker_filename);
+    %% Load previously saved EEG data
+    file_name_data = fullfile(folder_generated_data, [subject_root_name '.out.mat']);
+    load(file_name_data);
     
-    %% load EEG data
-    file_name_data = [num2str(subject) '_data'];
-    load([file_name '_data']); % load eegdata saved previously
-    
-    % apply filter
-    data = apply_filters(data);
+    %% Apply filter
+    data = apply_filters(loaded_raw_data_from_eeglab);
 
     electrodes_to_use = (1:72);
     
@@ -52,7 +54,6 @@ for subject = subjects_to_use
     % average? Can we use symmetrical channels (eg left/right mastoid
     % given that it seems an extensive cap (72 chn!), if this is not possible,
     % it would probably make sense to go for the average too.. think about it)
-
     vEOG_data = data(71,:);
     hEOG_data = data(72,:);
     
@@ -140,7 +141,8 @@ for subject = subjects_to_use
 
         all_segments_erp_summary.(['electrode' num2str(electrode)]) = trial_data_summary;
     end
-end
+   
+save(fullfile(folder_generated_data, [subject_root_name '_manmade']),'all_segments_erp_manmade')
+save(fullfile(folder_generated_data, [subject_root_name '_natural']),'all_segments_erp_natural') 
 
-save([num2str(subject_name) '_test'],'all_segments_erp_manmade')
-save([num2str(subject_name) '_test'],'all_segments_erp_natural')
+end
