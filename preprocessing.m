@@ -14,7 +14,7 @@ subject_total = size(subject_files, 1);
 sample_rate_hz = 512;
 
 %% Choose subjects and electrodes (channels)
-subjects_to_use = 1:subject_total;
+subjects_to_use = 1 % 1:subject_total;
 num_subjects = length(subjects_to_use);
 num_electrodes = 72;
 num_conditions = 2; % man-made/natural-enviro
@@ -48,7 +48,7 @@ for subject = subjects_to_use
     %% Apply filter
     data = apply_filters(loaded_raw_data_from_eeglab, sample_rate_hz);
 
-    electrodes_to_use = (1:72);
+    electrodes_to_use = 1:72;
     
     % Data were already re-referenced to channel 30 (POz)
     % Consider if we want to imprement other re-reference: all-channels
@@ -61,8 +61,14 @@ for subject = subjects_to_use
     %% create ERP for each condition
     for electrode = electrodes_to_use
         
-        ERP_matrix_manmade = zeros(number_of_trials, 400); % empty matrix for each segment, each segment is 400ms
-        ERP_matrix_natural = zeros(number_of_trials, 400); % empty matrix for each segment, each segment is 400ms
+        start_interval_time_s = 0.1;
+        start_interval_timepoint = floor(start_interval_time_s * sample_rate_hz);
+        end_interval_time_s = 0.4;
+        end_interval_timepoint = floor(end_interval_time_s * sample_rate_hz);
+        total_sample_points = start_interval_timepoint + end_interval_timepoint + 1;
+                    
+        ERP_matrix_manmade = zeros(number_of_trials, total_sample_points); % empty matrix for each segment, each segment is 400ms
+        ERP_matrix_natural = zeros(number_of_trials, total_sample_points); % empty matrix for each segment, each segment is 400ms
         num_events_ok = 0; % count variable to record number of segments
             
         for condition = (1:2)
@@ -78,18 +84,14 @@ for subject = subjects_to_use
                 if (any(all_triggers(trial,1) == conditions_to_use))
                     stimulus_time_ms = all_triggers(trial,2);
                     stimulus_timepoint = floor(stimulus_time_ms / 1000 * sample_rate_hz);
-                    start_interval_time_s = 0.1;
-                    start_interval_timepoint = floor(start_interval_time_s * sample_rate_hz);
-                    end_interval_time_s = 0.4;
-                    end_interval_timepoint = floor(end_interval_time_s * sample_rate_hz);
-                    total_sample_points = start_interval_timepoint + end_interval_timepoint + 1;
-                    channel_segment = data(electrode,stimulus_timepoint - start_interval_timepoint :stimulus_timepoint + end_interval_timepoint); % original_ not electrode but channel!!
+                    selected_datapoints = stimulus_timepoint - start_interval_timepoint : stimulus_timepoint + end_interval_timepoint;
+                    channel_segment = data(electrode, selected_datapoints); % original_ not electrode but channel!!
                     channel_segment = channel_segment - mean(channel_segment(1:100));
                     
-                    vEOG_segment = vEOG_data(stimulus_timepoint - start_interval_timepoint:stimulus_timepoint + end_interval_timepoint); % get EOG segment
+                    vEOG_segment = vEOG_data(selected_datapoints); % get EOG segment
                     vEOG_segment = vEOG_segment - mean(vEOG_segment(1:100)); % baseline correct
                     
-                    hEOG_segment = hEOG_data(stimulus_timepoint - start_interval_timepoint:stimulus_timepoint + end_interval_timepoint);
+                    hEOG_segment = hEOG_data(selected_datapoints);
                     hEOG_segment = hEOG_segment - mean(hEOG_segment(1:100));
 
                     %% check there is no eye blink or artifact on any of the channels
@@ -98,7 +100,6 @@ for subject = subjects_to_use
                     % misses and false alarms, and increasing the sensitivity of the artifact rejection process (see Luck'book)
                     segment_ok = 1;
                     
-                    channel_segment = data(electrode,stimulus_time_ms - start_interval_timepoint:stimulus_time_ms + end_interval_timepoint); % original_ not electrode but channel!!
                     if (max(channel_segment(1:total_sample_points)) - min(channel_segment(1:total_sample_points))) > 200 ||...
                             ((max(vEOG_segment(1:total_sample_points)) - min(vEOG_segment(1:total_sample_points))) > 160) ||...
                             ((max(hEOG_segment(1:total_sample_points)) - min(hEOG_segment(1:total_sample_points))) > 160) % Paul, 160(80),120(60),60(30)/Luck,200(100),160(80),160(80)
@@ -111,11 +112,11 @@ for subject = subjects_to_use
                         num_events_ok = num_events_ok + 1; % count number of segments
                         
                         if condition == 1
-                            ERP_matrix_manmade(num_events_ok,1:total_sample_points) = channel_segment; % put the good segment into matrix
+                            ERP_matrix_manmade(num_events_ok, 1:total_sample_points) = channel_segment; % put the good segment into matrix
                         end
                         
                         if condition == 2
-                            ERP_matrix_natural(num_events_ok,1:total_sample_points) = channel_segment; % put the good segment into matrix
+                            ERP_matrix_natural(num_events_ok, 1:total_sample_points) = channel_segment; % put the good segment into matrix
                         end
                     end
                     
