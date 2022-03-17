@@ -1,21 +1,21 @@
-function filtered_data = apply_filters(input_data)
+function filtered_data = apply_filters(input_data, sample_rate_hz)
 
-data_d = double(input_data); 
-        
-%% Filtering
-sample_rate = 512; % acquired at 1000 Hz and downsampled to 512 Hz
+input_data_as_double = double(input_data);
 
 %  only low pass at 30Hz
-high_cutoff_freq = 30;
+high_cutoff_freq = 20;
 filter_order = 3;
-[b, a] = butter(filter_order, high_cutoff_freq / (sample_rate / 2)); % low pass digital filter design
-dataOut_low_pass = filtfilt(b, a, data_d); % zero-phase filtering     % if only low-pass
+[b, a] = butter(filter_order, high_cutoff_freq / (sample_rate_hz / 2)); % low pass digital filter design
+dataOut_low_pass = filtfilt(b, a, input_data_as_double); % zero-phase filtering     % if only low-pass
 dataOut_low_pass = dataOut_low_pass - mean(dataOut_low_pass);
 data_lp =  dataOut_low_pass; % replace all_data with filtered data
 
 %  notch filter
 notch_freq = 50;
-[b, a] = iirnotch(notch_freq / (sample_rate / 2), 0.01);
+wo = notch_freq/(sample_rate_hz/2);
+qfactor = 35;
+bw = wo/qfactor;
+[b, a] = iirnotch(wo, bw);
 notch_filtered_data = filtfilt(b, a, data_lp); % zero-phase filtering
 notch_filtered_data = notch_filtered_data - mean(notch_filtered_data); % baseline correct
 

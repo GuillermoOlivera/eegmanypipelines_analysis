@@ -82,17 +82,17 @@ for subject = subjects_to_use
             for trial = (1:number_of_trials) % loop through all trials
                 
                 if (any(all_triggers(trial,1) == conditions_to_use))
-                    stimulus_time_ms = all_triggers(trial,2);
-                    stimulus_timepoint = floor(stimulus_time_ms / 1000 * sample_rate_hz);
+                    stimulus_timepoint = all_triggers(trial,2);
+%                     stimulus_timepoint = floor(stimulus_time_ms / 1000 * sample_rate_hz);
                     selected_datapoints = stimulus_timepoint - start_interval_timepoint : stimulus_timepoint + end_interval_timepoint;
-                    channel_segment = data(electrode, selected_datapoints); % original_ not electrode but channel!!
-                    channel_segment = channel_segment - mean(channel_segment(1:100));
+                    channel_segment = data(electrode, selected_datapoints);
+%                     channel_segment = channel_segment - mean(channel_segment(1:100));
                     
                     vEOG_segment = vEOG_data(selected_datapoints); % get EOG segment
-                    vEOG_segment = vEOG_segment - mean(vEOG_segment(1:100)); % baseline correct
+%                     vEOG_segment = vEOG_segment - mean(vEOG_segment(1:100)); % baseline correct
                     
                     hEOG_segment = hEOG_data(selected_datapoints);
-                    hEOG_segment = hEOG_segment - mean(hEOG_segment(1:100));
+%                     hEOG_segment = hEOG_segment - mean(hEOG_segment(1:100));
 
                     %% check there is no eye blink or artifact on any of the channels
                     % peak-to-peak voltage vs threshold voltage

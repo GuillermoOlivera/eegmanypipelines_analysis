@@ -12,6 +12,10 @@ function all_triggers = read_triggers_from_vmrk(marker_filename)
             comma_locations = strfind(nextLine, ',');  % get the location of the commas
             
             % Description: number_of_digits_for_trigger = 4; -> comma_locations(2)- 4
+            %all_triggers(trigger_count,1) =  str2num(nextLine(comma_locations(2)-4:comma_locations(2)-1));  % get trigger name
+            %all_triggers(trigger_count,2) =  str2num(nextLine(comma_locations(2)+1:comma_locations(3)-1));  % get trigger time
+            
+            % for hyp2a
             all_triggers(trigger_count,1) =  str2num(nextLine(comma_locations(2)-4:comma_locations(2)-1));  % get trigger name
             all_triggers(trigger_count,2) =  str2num(nextLine(comma_locations(2)+1:comma_locations(3)-1));  % get trigger time
             
