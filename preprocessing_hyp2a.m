@@ -5,7 +5,7 @@ clc
 %% Hardcoded folder and file paths
 folder = 'G:\_EEGManyPipelines\EMP_data\eeg_brainvision\';
 folder_generated_data = 'G:\_EEGManyPipelines\EMP_data\eeg_brainvision\_generated';
-folder_analysed_data = 'G:\_EEGManyPipelines\EMP_data\eeg_brainvision\_analysis_hy2a';
+folder_analysed_data = 'G:\_EEGManyPipelines\EMP_data\eeg_brainvision\_analysis_hy2a_2';
 folder_subject_match = 'G:\_EEGManyPipelines\EMP_data\eeg_brainvision\*.vhdr';
 folder_subject_root = fileparts(folder_subject_match);
 subject_files = ls(folder_subject_match);
@@ -17,6 +17,7 @@ num_subjects = length(subjects_to_use);
 num_electrodes = 72;
 num_conditions = 4; % new vs old in man-made/natural-enviro
 sample_rate_hz = 512;
+low_pass_upper_limit_hz = 30;
 
 %% Memory pre-allocation
 all_segments_erp = struct();
@@ -45,7 +46,7 @@ for subject = subjects_to_use
     load(file_name_data);
 
     %% Apply filter
-    data = apply_filters(loaded_raw_data_from_eeglab.data, sample_rate_hz);
+    data = apply_filters(loaded_raw_data_from_eeglab.data, sample_rate_hz, low_pass_upper_limit_hz);
     
     electrodes_to_use = (1:72);
     
@@ -145,22 +146,20 @@ for subject = subjects_to_use
         trial_data_manmadenew = struct();
         trial_data_manmadenew.subject = subject;
         trial_data_manmadenew.erp = ERP_matrix_manmadenew;
-        all_segments_erp_manmadenew.(['electrode' num2str(electrode)]) = trial_data_manmadenew;
+        all_electrodes{electrode} = trial_data_manmadenew;
+%         all_segments_erp_manmadenew.data.(['electrode' num2str(electrode)]) = trial_data_manmadenew;
         
         trial_data_naturalnew = struct();
-        trial_data_naturalnew.subject = subject;
         trial_data_naturalnew.erp = ERP_matrix_naturalnew;
-        all_segments_erp_naturalnew.(['electrode' num2str(electrode)]) = trial_data_naturalnew;
+        all_segments_erp_naturalnew.data.(['electrode' num2str(electrode)]) = trial_data_naturalnew;
         
         trial_data_manmadeold = struct();
-        trial_data_manmadeold.subject = subject;
         trial_data_manmadeold.erp = ERP_matrix_manmadeold;
-        all_segments_erp_manmadeold.(['electrode' num2str(electrode)]) = trial_data_manmadeold;
+        all_segments_erp_manmadeold.data.(['electrode' num2str(electrode)]) = trial_data_manmadeold;
         
         trial_data_naturalold = struct();
-        trial_data_naturalold.subject = subject;
         trial_data_naturalold.erp = ERP_matrix_naturalold;
-        all_segments_erp_naturalold.(['electrode' num2str(electrode)]) = trial_data_naturalold;
+        all_segments_erp_naturalold.data.(['electrode' num2str(electrode)]) = trial_data_naturalold;
 
         erp_manmadenew_mean = mean(ERP_matrix_manmadenew);
         erp_naturalnew_mean = mean(ERP_matrix_naturalnew);
@@ -174,8 +173,26 @@ for subject = subjects_to_use
         %trial_data_summary.erp_manmade_mean_without_correction = erp_manmade_mean;
         %trial_data_summary.erp_natural_mean_without_correction = erp_natural_mean;
         
-        all_segments_erp_summary.(['electrode' num2str(electrode)]) = trial_data_summary;
+        all_segments_erp_summary.data.(['electrode' num2str(electrode)]) = trial_data_summary;
     end
+    
+    if (exist(folder_analysed_data, 'file') == 0)
+        mkdir(folder_analysed_data); 
+    end
+    
+    all_segments_erp_summary.sample_rate_hz = sample_rate_hz;
+    all_segments_erp_summary.low_pass_upper_limit_hz = low_pass_upper_limit_hz;
+    
+    all_segments_erp_manmadenew.data = all_electrodes;
+    all_segments_erp_manmadenew.sample_rate_hz = sample_rate_hz;
+    all_segments_erp_naturalnew.sample_rate_hz = sample_rate_hz;
+    all_segments_erp_manmadeold.sample_rate_hz = sample_rate_hz;
+    all_segments_erp_naturalnew.sample_rate_hz = sample_rate_hz;
+    
+    all_segments_erp_manmadenew.low_pass_upper_limit_hz = low_pass_upper_limit_hz;
+    all_segments_erp_naturalnew.low_pass_upper_limit_hz = low_pass_upper_limit_hz;
+    all_segments_erp_manmadeold.low_pass_upper_limit_hz = low_pass_upper_limit_hz;
+    all_segments_erp_naturalnew.low_pass_upper_limit_hz = low_pass_upper_limit_hz;
     
     save(fullfile(folder_analysed_data, [subject_root_name '_manmadenew']),'all_segments_erp_manmadenew')
     save(fullfile(folder_analysed_data, [subject_root_name '_naturalnew']),'all_segments_erp_naturalnew')
