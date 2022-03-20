@@ -11,13 +11,31 @@ folder_subject_root = fileparts(folder_subject_match);
 subject_files = ls(folder_subject_match);
 subject_total = size(subject_files, 1);
 
+if (exist(folder_analysed_data, 'file') == 0)
+    mkdir(folder_analysed_data); 
+end
+
 %% Choose subjects and electrodes (channels)
-subjects_to_use = 1:subject_total;
-num_subjects = length(subjects_to_use);
-num_electrodes = 72;
-num_conditions = 4; % new vs old in man-made/natural-enviro
+subjects_to_use = 1:3 %1:subject_total;
+electrodes_to_use = [2,10,22,33,44] % 1:72;
+    
+% % num_subjects = length(subjects_to_use);
+% % num_electrodes = 72;
+% % num_conditions = 4; % new vs old in man-made/natural-enviro
 sample_rate_hz = 512;
 low_pass_upper_limit_hz = 30;
+pre_stimulus_ms = 100;
+post_stimulus_ms = 600;
+pre_stimulus = floor(pre_stimulus_ms / 1000 * sample_rate_hz);
+post_stimulus = floor(post_stimulus_ms / 1000 * sample_rate_hz);
+length_segment = pre_stimulus + post_stimulus + 1;
+
+info = struct();
+info.pre_stimulus_ms = pre_stimulus_ms;
+info.post_stimulus_ms = post_stimulus_ms;
+info.length_segment_sanity_check = length_segment;
+info.sample_rate_hz = sample_rate_hz;
+info.low_pass_upper_limit_hz = low_pass_upper_limit_hz;
 
 %% Memory pre-allocation
 all_segments_erp = struct();
@@ -48,8 +66,6 @@ for subject = subjects_to_use
     %% Apply filter
     data = apply_filters(loaded_raw_data_from_eeglab.data, sample_rate_hz, low_pass_upper_limit_hz);
     
-    electrodes_to_use = (1:72);
-    
     % Data were already re-referenced to channel 30 (POz)
     % Consider if we want to imprement other re-reference: all-channels
     % average? Can we use symmetrical channels (eg left/right mastoid
@@ -58,11 +74,7 @@ for subject = subjects_to_use
     vEOG_data = data(71,:);
     hEOG_data = data(72,:);
     
-    pre_stimulus_ms = 100;
-    pre_stimulus = floor(pre_stimulus_ms / 1000 * sample_rate_hz);
-    post_stimulus_ms = 600;
-    post_stimulus = floor(post_stimulus_ms / 1000 * sample_rate_hz);
-    length_segment = pre_stimulus + post_stimulus + 1;
+
     
     %% create ERP for each condition
     for electrode = electrodes_to_use
@@ -143,23 +155,11 @@ for subject = subjects_to_use
         ERP_matrix_manmadeold = ERP_matrix_manmadeold(~all(ERP_matrix_manmadeold == 0, 2),:);
         ERP_matrix_naturalold = ERP_matrix_naturalold(~all(ERP_matrix_naturalold == 0, 2),:);
         
-        trial_data_manmadenew = struct();
-        trial_data_manmadenew.subject = subject;
-        trial_data_manmadenew.erp = ERP_matrix_manmadenew;
-        all_electrodes{electrode} = trial_data_manmadenew;
-%         all_segments_erp_manmadenew.data.(['electrode' num2str(electrode)]) = trial_data_manmadenew;
-        
-        trial_data_naturalnew = struct();
-        trial_data_naturalnew.erp = ERP_matrix_naturalnew;
-        all_segments_erp_naturalnew.data.(['electrode' num2str(electrode)]) = trial_data_naturalnew;
-        
-        trial_data_manmadeold = struct();
-        trial_data_manmadeold.erp = ERP_matrix_manmadeold;
-        all_segments_erp_manmadeold.data.(['electrode' num2str(electrode)]) = trial_data_manmadeold;
-        
-        trial_data_naturalold = struct();
-        trial_data_naturalold.erp = ERP_matrix_naturalold;
-        all_segments_erp_naturalold.data.(['electrode' num2str(electrode)]) = trial_data_naturalold;
+        % Save result of each electrode into cell
+        trial_data_manmadenew{electrode,:} = ERP_matrix_manmadenew;
+        trial_data_naturalnew{electrode,:} = ERP_matrix_naturalnew;
+        trial_data_manmadeold{electrode,:} = ERP_matrix_manmadeold;
+        trial_data_naturalold{electrode,:} = ERP_matrix_naturalold;
 
         erp_manmadenew_mean = mean(ERP_matrix_manmadenew);
         erp_naturalnew_mean = mean(ERP_matrix_naturalnew);
@@ -176,24 +176,18 @@ for subject = subjects_to_use
         all_segments_erp_summary.data.(['electrode' num2str(electrode)]) = trial_data_summary;
     end
     
-    if (exist(folder_analysed_data, 'file') == 0)
-        mkdir(folder_analysed_data); 
-    end
+    % Save results into struct
+    all_segments_erp_summary.info = info;
+    all_segments_erp_manmadenew.info = info;
+    all_segments_erp_naturalnew.info = info;
+    all_segments_erp_manmadeold.info = info;
+    all_segments_erp_naturalnew.info = info;
     
-    all_segments_erp_summary.sample_rate_hz = sample_rate_hz;
-    all_segments_erp_summary.low_pass_upper_limit_hz = low_pass_upper_limit_hz;
-    
-    all_segments_erp_manmadenew.data = all_electrodes;
-    all_segments_erp_manmadenew.sample_rate_hz = sample_rate_hz;
-    all_segments_erp_naturalnew.sample_rate_hz = sample_rate_hz;
-    all_segments_erp_manmadeold.sample_rate_hz = sample_rate_hz;
-    all_segments_erp_naturalnew.sample_rate_hz = sample_rate_hz;
-    
-    all_segments_erp_manmadenew.low_pass_upper_limit_hz = low_pass_upper_limit_hz;
-    all_segments_erp_naturalnew.low_pass_upper_limit_hz = low_pass_upper_limit_hz;
-    all_segments_erp_manmadeold.low_pass_upper_limit_hz = low_pass_upper_limit_hz;
-    all_segments_erp_naturalnew.low_pass_upper_limit_hz = low_pass_upper_limit_hz;
-    
+    all_segments_erp_manmadenew.all_electrodes = trial_data_manmadenew;
+    all_segments_erp_naturalnew.all_electrodes = trial_data_naturalnew;
+    all_segments_erp_manmadeold.all_electrodes = trial_data_manmadeold;
+    all_segments_erp_naturalnew.all_electrodes = trial_data_naturalold;
+        
     save(fullfile(folder_analysed_data, [subject_root_name '_manmadenew']),'all_segments_erp_manmadenew')
     save(fullfile(folder_analysed_data, [subject_root_name '_naturalnew']),'all_segments_erp_naturalnew')
     save(fullfile(folder_analysed_data, [subject_root_name '_manmadeold']),'all_segments_erp_manmadeold')
@@ -202,4 +196,20 @@ for subject = subjects_to_use
     
 end
 
+match_trial_type = ls(strcat(folder_analysed_data, '\*_manmadenew*'));
+
+clear erp;
+count = 1;
+mean_all_subjects = struct();
+for electrode_selected = electrodes_to_use
+    erp{count} = mean_erp_for_all_subjects_from_specific_electrode(folder_analysed_data, match_trial_type, electrode_selected);
+    count = count + 1;
+end
+
+all_segments_erp_summary.manmade_new_mean_metadata = electrodes_to_use;
+all_segments_erp_summary.manmade_new_mean_electrodes = erp;
+
 save(fullfile(folder_analysed_data, 'test_all'),'all_segments_erp_summary')
+
+
+
