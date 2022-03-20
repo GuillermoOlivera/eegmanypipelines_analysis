@@ -11,11 +11,11 @@ subject_files = ls(folder_subject_match);
 subject_total = size(subject_files, 1);
 
 %% Choose subjects and electrodes (channels)
-subjects_to_use = 1:subject_total;
+subjects_to_use = 1;%1:subject_total;
 num_subjects = length(subjects_to_use);
 num_electrodes = 72;
 num_conditions = 2; % man-made/natural-enviro
-sample_rate_hz = 512;
+sample_rate_hz = 1000;
 
 %% Memory pre-allocation
 % ERPs_valid= zeros(num_electrodes, num_conditions, num_subjects); % not used
@@ -25,7 +25,7 @@ all_segments_erp = struct();
 % convert data point in ms (Gui va bene così? o si può spiegare meglio?)
 pre_stimulus = floor(0.1 / (1/sample_rate_hz)); % pre stimulus -> 0.1 s
 post_stimulus = floor(0.4 / (1/sample_rate_hz)); % after stimulus -> 0.2 s
-length_segment = floor(0.5 / (1/sample_rate_hz)); % total segment length -> 0.5 s
+length_segment = floor(0.5 / (1/sample_rate_hz)) + 1; % total segment length -> 0.5 s
 
 %%
 for subject = subjects_to_use
@@ -152,5 +152,6 @@ for subject = subjects_to_use
    
 save(fullfile(folder_generated_data, [subject_root_name '_manmade']),'all_segments_erp_manmade')
 save(fullfile(folder_generated_data, [subject_root_name '_natural']),'all_segments_erp_natural') 
+save(fullfile(folder_generated_data, [subject_root_name '_summary']),'all_segments_erp_summary') 
 
 end
