@@ -5,7 +5,7 @@ clc
 %% Hardcoded folder and file paths
 folder = 'G:\_EEGManyPipelines\EMP_data\eeg_brainvision\';
 folder_generated_data = 'G:\_EEGManyPipelines\EMP_data\eeg_brainvision\_generated';
-folder_analysed_data = 'G:\_EEGManyPipelines\EMP_data\eeg_brainvision\_analysis_hy2a_2';
+folder_analysed_data = 'G:\_EEGManyPipelines\EMP_data\eeg_brainvision\_analysis_hy2a_3';
 folder_subject_match = 'G:\_EEGManyPipelines\EMP_data\eeg_brainvision\*.vhdr';
 folder_subject_root = fileparts(folder_subject_match);
 subject_files = ls(folder_subject_match);
@@ -16,8 +16,8 @@ if (exist(folder_analysed_data, 'file') == 0)
 end
 
 %% Choose subjects and electrodes (channels)
-subjects_to_use = 1:3 %1:subject_total;
-electrodes_to_use = [2,10,22,33,44] % 1:72;
+subjects_to_use = 1:subject_total;
+electrodes_to_use = 1:72;
     
 % % num_subjects = length(subjects_to_use);
 % % num_electrodes = 72;
@@ -63,22 +63,22 @@ for subject = subjects_to_use
     file_name_data = fullfile(folder_generated_data, [subject_root_name '.out.mat']);
     load(file_name_data);
 
-    %% Apply filter
-    data = apply_filters(loaded_raw_data_from_eeglab.data, sample_rate_hz, low_pass_upper_limit_hz);
+    %% EOG correction
     
     % Data were already re-referenced to channel 30 (POz)
     % Consider if we want to imprement other re-reference: all-channels
     % average? Can we use symmetrical channels (eg left/right mastoid
     % given that it seems an extensive cap (72 chn!), if this is not possible,
     % it would probably make sense to go for the average too.. think about it)
-    vEOG_data = data(71,:);
-    hEOG_data = data(72,:);
-    
 
-    
-    %% create ERP for each condition
+    vEOG_data = apply_filters(loaded_raw_data_from_eeglab.data(71,:), sample_rate_hz, low_pass_upper_limit_hz);
+    hEOG_data = apply_filters(loaded_raw_data_from_eeglab.data(72,:), sample_rate_hz, low_pass_upper_limit_hz);
+
+    %% create ERP for each condition per electrode
     for electrode = electrodes_to_use
-        
+        % Apply filter
+        data = apply_filters(loaded_raw_data_from_eeglab.data(electrode,:), sample_rate_hz, low_pass_upper_limit_hz);
+
         ERP_matrix_manmadenew = zeros(number_of_trials, length_segment); % empty matrix for each segment, each segment is 400ms
         ERP_matrix_naturalold = zeros(number_of_trials, length_segment); % empty matrix for each segment, each segment is 400ms
         num_events_ok = 0; % count variable to record number of segments
@@ -101,14 +101,14 @@ for subject = subjects_to_use
                     stimulus_timepoint = all_triggers(trial,2);
 %                     stimulus_timepoint = floor(stimulus_time_ms / 1000 * sample_rate_hz);
                     selected_datapoints = stimulus_timepoint - pre_stimulus:stimulus_timepoint + post_stimulus;
-                    channel_segment = data(electrode, selected_datapoints); % original_ not electrode but channel!!
-                    channel_segment = channel_segment - mean(channel_segment(1 : pre_stimulus));
+                    channel_segment = data(selected_datapoints); % original_ not electrode but channel!!
+                    %channel_segment = channel_segment - mean(channel_segment(1 : pre_stimulus));
                     
                     vEOG_segment = vEOG_data(selected_datapoints); % get EOG segment
-                    vEOG_segment = vEOG_segment - mean(vEOG_segment(1 : pre_stimulus)); % baseline correct
+                    %vEOG_segment = vEOG_segment - mean(vEOG_segment(1 : pre_stimulus)); % baseline correct
                     
                     hEOG_segment = hEOG_data(selected_datapoints);
-                    hEOG_segment = hEOG_segment - mean(hEOG_segment(1 : pre_stimulus));
+                    %hEOG_segment = hEOG_segment - mean(hEOG_segment(1 : pre_stimulus));
                     
                     %% check there is no eye blink or artifact on any of the channels
                     % peak-to-peak voltage vs threshold voltage
@@ -187,7 +187,7 @@ for subject = subjects_to_use
     all_segments_erp_naturalnew.all_electrodes = trial_data_naturalnew;
     all_segments_erp_manmadeold.all_electrodes = trial_data_manmadeold;
     all_segments_erp_naturalnew.all_electrodes = trial_data_naturalold;
-        
+
     save(fullfile(folder_analysed_data, [subject_root_name '_manmadenew']),'all_segments_erp_manmadenew')
     save(fullfile(folder_analysed_data, [subject_root_name '_naturalnew']),'all_segments_erp_naturalnew')
     save(fullfile(folder_analysed_data, [subject_root_name '_manmadeold']),'all_segments_erp_manmadeold')
@@ -202,14 +202,12 @@ clear erp;
 count = 1;
 mean_all_subjects = struct();
 for electrode_selected = electrodes_to_use
-    erp{count} = mean_erp_for_all_subjects_from_specific_electrode(folder_analysed_data, match_trial_type, electrode_selected);
+    [total_subjects erp{count}] = mean_erp_for_all_subjects_from_specific_electrode(folder_analysed_data, match_trial_type, electrode_selected);
     count = count + 1;
 end
 
-all_segments_erp_summary.manmade_new_mean_metadata = electrodes_to_use;
+all_segments_erp_summary.manmade_new_mean_metadata.total_subjects = total_subjects;
+all_segments_erp_summary.manmade_new_mean_metadata.used_subjects = electrodes_to_use;
 all_segments_erp_summary.manmade_new_mean_electrodes = erp;
 
 save(fullfile(folder_analysed_data, 'test_all'),'all_segments_erp_summary')
-
-
-
