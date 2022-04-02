@@ -1,11 +1,10 @@
 %% ERPs N1
 clear all
 clc
-
 %% Hardcoded folder and file paths
 folder = 'G:\_EEGManyPipelines\EMP_data\eeg_brainvision\';
 folder_generated_data = 'G:\_EEGManyPipelines\EMP_data\eeg_brainvision\_generated';
-folder_analysed_data = 'G:\_EEGManyPipelines\EMP_data\eeg_brainvision\_analysis_hy2a_3';
+folder_analysed_data = 'G:\_EEGManyPipelines\EMP_data\eeg_brainvision\_analysis_hy2a_5';
 folder_subject_match = 'G:\_EEGManyPipelines\EMP_data\eeg_brainvision\*.vhdr';
 folder_subject_root = fileparts(folder_subject_match);
 subject_files = ls(folder_subject_match);
@@ -22,6 +21,7 @@ electrodes_to_use = 1:72;
 % % num_subjects = length(subjects_to_use);
 % % num_electrodes = 72;
 % % num_conditions = 4; % new vs old in man-made/natural-enviro
+number_of_trials = 1200;
 sample_rate_hz = 512;
 low_pass_upper_limit_hz = 30;
 pre_stimulus_ms = 100;
@@ -30,7 +30,9 @@ pre_stimulus = floor(pre_stimulus_ms / 1000 * sample_rate_hz);
 post_stimulus = floor(post_stimulus_ms / 1000 * sample_rate_hz);
 length_segment = pre_stimulus + post_stimulus + 1;
 
+all_segments_erp_summary = struct();
 info = struct();
+info.number_of_trials = number_of_trials;
 info.pre_stimulus_ms = pre_stimulus_ms;
 info.post_stimulus_ms = post_stimulus_ms;
 info.length_segment_sanity_check = length_segment;
@@ -40,7 +42,6 @@ info.low_pass_upper_limit_hz = low_pass_upper_limit_hz;
 %% Memory pre-allocation
 all_segments_erp = struct();
 
-%%
 for subject = subjects_to_use
     subject_root_vhdr_name = subject_files(subject, :);
     subject_root_name = erase(subject_root_vhdr_name, '.vhdr');
@@ -48,10 +49,6 @@ for subject = subjects_to_use
     %% Save EEG data as .mat file
     subject_vhdr_filepath = fullfile(folder_subject_root, subject_root_vhdr_name);
     vmrk_to_mat(subject_vhdr_filepath, folder_generated_data);
-    
-    %% Trials
-    number_of_trials = 1200;
-    total_trigger_count = 0;
     
     %% Get trigger times from .vmrk file
     all_triggers = zeros(number_of_trials,2);
@@ -64,13 +61,11 @@ for subject = subjects_to_use
     load(file_name_data);
 
     %% EOG correction
-    
     % Data were already re-referenced to channel 30 (POz)
     % Consider if we want to imprement other re-reference: all-channels
     % average? Can we use symmetrical channels (eg left/right mastoid
     % given that it seems an extensive cap (72 chn!), if this is not possible,
     % it would probably make sense to go for the average too.. think about it)
-
     vEOG_data = apply_filters(loaded_raw_data_from_eeglab.data(71,:), sample_rate_hz, low_pass_upper_limit_hz);
     hEOG_data = apply_filters(loaded_raw_data_from_eeglab.data(72,:), sample_rate_hz, low_pass_upper_limit_hz);
 
@@ -79,8 +74,11 @@ for subject = subjects_to_use
         % Apply filter
         data = apply_filters(loaded_raw_data_from_eeglab.data(electrode,:), sample_rate_hz, low_pass_upper_limit_hz);
 
-        ERP_matrix_manmadenew = zeros(number_of_trials, length_segment); % empty matrix for each segment, each segment is 400ms
-        ERP_matrix_naturalold = zeros(number_of_trials, length_segment); % empty matrix for each segment, each segment is 400ms
+        ERP_matrix_manmade_new = zeros(number_of_trials, length_segment); % empty matrix for each segment, each segment is 400ms
+        ERP_matrix_natural_old = zeros(number_of_trials, length_segment); % empty matrix for each segment, each segment is 400ms
+        ERP_matrix_natural_new = zeros(number_of_trials, length_segment); % empty matrix for each segment, each segment is 400ms
+        ERP_matrix_manmade_old = zeros(number_of_trials, length_segment); % empty matrix for each segment, each segment is 400ms
+
         num_events_ok = 0; % count variable to record number of segments
         
         for condition = (1:4)
@@ -99,16 +97,10 @@ for subject = subjects_to_use
                 
                 if (any(all_triggers(trial,1) == conditions_to_use))
                     stimulus_timepoint = all_triggers(trial,2);
-%                     stimulus_timepoint = floor(stimulus_time_ms / 1000 * sample_rate_hz);
                     selected_datapoints = stimulus_timepoint - pre_stimulus:stimulus_timepoint + post_stimulus;
                     channel_segment = data(selected_datapoints); % original_ not electrode but channel!!
-                    %channel_segment = channel_segment - mean(channel_segment(1 : pre_stimulus));
-                    
                     vEOG_segment = vEOG_data(selected_datapoints); % get EOG segment
-                    %vEOG_segment = vEOG_segment - mean(vEOG_segment(1 : pre_stimulus)); % baseline correct
-                    
                     hEOG_segment = hEOG_data(selected_datapoints);
-                    %hEOG_segment = hEOG_segment - mean(hEOG_segment(1 : pre_stimulus));
                     
                     %% check there is no eye blink or artifact on any of the channels
                     % peak-to-peak voltage vs threshold voltage
@@ -128,86 +120,78 @@ for subject = subjects_to_use
                         num_events_ok = num_events_ok + 1; % count number of segments
                         
                         if condition == 1
-                            ERP_matrix_manmadenew(num_events_ok, 1:length_segment) = channel_segment; % put the good segment into matrix
+                            ERP_matrix_manmade_new(num_events_ok, 1:length_segment) = channel_segment; % put the good segment into matrix
                         end
                         
                         if condition == 2
-                            ERP_matrix_naturalnew(num_events_ok, 1:length_segment) = channel_segment; % put the good segment into matrix
+                            ERP_matrix_natural_new(num_events_ok, 1:length_segment) = channel_segment; % put the good segment into matrix
                         end
                         
                         if condition == 3
-                            ERP_matrix_manmadeold(num_events_ok, 1:length_segment) = channel_segment; % put the good segment into matrix
+                            ERP_matrix_manmade_old(num_events_ok, 1:length_segment) = channel_segment; % put the good segment into matrix
                         end
                         
                         if condition == 4
-                            ERP_matrix_naturalold(num_events_ok, 1:length_segment) = channel_segment; % put the good segment into matrix
+                            ERP_matrix_natural_old(num_events_ok, 1:length_segment) = channel_segment; % put the good segment into matrix
                         end
-                    end
-                    
-                end
-                
-            end
-            
+                    end 
+                end 
+            end            
         end
         
-        ERP_matrix_manmadenew = ERP_matrix_manmadenew(~all(ERP_matrix_manmadenew == 0, 2),:);
-        ERP_matrix_naturalnew = ERP_matrix_naturalnew(~all(ERP_matrix_naturalnew == 0, 2),:);
-        ERP_matrix_manmadeold = ERP_matrix_manmadeold(~all(ERP_matrix_manmadeold == 0, 2),:);
-        ERP_matrix_naturalold = ERP_matrix_naturalold(~all(ERP_matrix_naturalold == 0, 2),:);
+        ERP_matrix_manmade_new = ERP_matrix_manmade_new(~all(ERP_matrix_manmade_new == 0, 2),:);
+        ERP_matrix_natural_new = ERP_matrix_natural_new(~all(ERP_matrix_natural_new == 0, 2),:);
+        ERP_matrix_manmade_old = ERP_matrix_manmade_old(~all(ERP_matrix_manmade_old == 0, 2),:);
+        ERP_matrix_natural_old = ERP_matrix_natural_old(~all(ERP_matrix_natural_old == 0, 2),:);
         
         % Save result of each electrode into cell
-        trial_data_manmadenew{electrode,:} = ERP_matrix_manmadenew;
-        trial_data_naturalnew{electrode,:} = ERP_matrix_naturalnew;
-        trial_data_manmadeold{electrode,:} = ERP_matrix_manmadeold;
-        trial_data_naturalold{electrode,:} = ERP_matrix_naturalold;
+        trial_data_manmadenew{electrode,:} = ERP_matrix_manmade_new;
+        trial_data_naturalnew{electrode,:} = ERP_matrix_natural_new;
+        trial_data_manmadeold{electrode,:} = ERP_matrix_manmade_old;
+        trial_data_naturalold{electrode,:} = ERP_matrix_natural_old;
 
-        erp_manmadenew_mean = mean(ERP_matrix_manmadenew);
-        erp_naturalnew_mean = mean(ERP_matrix_naturalnew);
-        erp_manmadeold_mean = mean(ERP_matrix_manmadeold);
-        erp_naturalold_mean = mean(ERP_matrix_naturalold);
-        trial_data_summary = struct();
-        trial_data_summary.erp_manmadenew_mean = erp_manmadenew_mean - mean(erp_manmadenew_mean(1: pre_stimulus));
-        trial_data_summary.erp_naturalnew_mean = erp_naturalnew_mean - mean(erp_naturalnew_mean(1: pre_stimulus));
-        trial_data_summary.erp_manmadeold_mean = erp_manmadeold_mean - mean(erp_manmadeold_mean(1: pre_stimulus));
-        trial_data_summary.erp_naturalold_mean = erp_naturalold_mean - mean(erp_naturalold_mean(1: pre_stimulus));
-        %trial_data_summary.erp_manmade_mean_without_correction = erp_manmade_mean;
-        %trial_data_summary.erp_natural_mean_without_correction = erp_natural_mean;
+        erp_manmadenew_mean = mean(ERP_matrix_manmade_new);
+        erp_naturalnew_mean = mean(ERP_matrix_natural_new);
+        erp_manmadeold_mean = mean(ERP_matrix_manmade_old);
+        erp_naturalold_mean = mean(ERP_matrix_natural_old);
         
-        all_segments_erp_summary.data.(['electrode' num2str(electrode)]) = trial_data_summary;
+        channel_summary = struct();
+        channel_summary.erp_manmadenew_mean = erp_manmadenew_mean - mean(erp_manmadenew_mean(1: pre_stimulus));
+        channel_summary.erp_naturalnew_mean = erp_naturalnew_mean - mean(erp_naturalnew_mean(1: pre_stimulus));
+        channel_summary.erp_manmadeold_mean = erp_manmadeold_mean - mean(erp_manmadeold_mean(1: pre_stimulus));
+        channel_summary.erp_naturalold_mean = erp_naturalold_mean - mean(erp_naturalold_mean(1: pre_stimulus));
+        
+        % FIXME: Do we need/want this info?
+        % info.num_events_ok = num_events_ok;
+        % all_segments_erp_summary.data.(['channel_' num2str(electrode)]) = channel_summary;
     end
     
     % Save results into struct
-    all_segments_erp_summary.info = info;
-    all_segments_erp_manmadenew.info = info;
-    all_segments_erp_naturalnew.info = info;
-    all_segments_erp_manmadeold.info = info;
-    all_segments_erp_naturalnew.info = info;
+    all_segments_erp_summary.subjects.(['subject_' num2str(subject)]).info = info;
     
-    all_segments_erp_manmadenew.all_electrodes = trial_data_manmadenew;
-    all_segments_erp_naturalnew.all_electrodes = trial_data_naturalnew;
-    all_segments_erp_manmadeold.all_electrodes = trial_data_manmadeold;
-    all_segments_erp_naturalnew.all_electrodes = trial_data_naturalold;
+    all_segments_erp_manmade_new.info = info;
+    all_segments_erp_natural_new.info = info;
+    all_segments_erp_manmade_old.info = info;
+    all_segments_erp_natural_new.info = info;
+    
+    all_segments_erp_manmade_new.all_electrodes = trial_data_manmadenew;
+    all_segments_erp_natural_new.all_electrodes = trial_data_naturalnew;
+    all_segments_erp_manmade_old.all_electrodes = trial_data_manmadeold;
+    all_segments_erp_natural_new.all_electrodes = trial_data_naturalold;
 
-    save(fullfile(folder_analysed_data, [subject_root_name '_manmadenew']),'all_segments_erp_manmadenew')
-    save(fullfile(folder_analysed_data, [subject_root_name '_naturalnew']),'all_segments_erp_naturalnew')
-    save(fullfile(folder_analysed_data, [subject_root_name '_manmadeold']),'all_segments_erp_manmadeold')
-    save(fullfile(folder_analysed_data, [subject_root_name '_naturalnew']),'all_segments_erp_naturalnew')
-    save(fullfile(folder_analysed_data, [subject_root_name '_summary']),'all_segments_erp_summary')
+    save(fullfile(folder_analysed_data, [subject_root_name '_manmade_new']),'all_segments_erp_manmade_new')
+    save(fullfile(folder_analysed_data, [subject_root_name '_natural_new']),'all_segments_erp_natural_new')
+    save(fullfile(folder_analysed_data, [subject_root_name '_manmade_old']),'all_segments_erp_manmade_old')
+    save(fullfile(folder_analysed_data, [subject_root_name '_natural_new']),'all_segments_erp_natural_new')
+%     save(fullfile(folder_analysed_data, [subject_root_name '_summary']),'all_segments_erp_summary')
     
 end
 
-match_trial_type = ls(strcat(folder_analysed_data, '\*_manmadenew*'));
+%% Post processing
+add_to_summary(all_segments_erp_summary, 'test_all', folder_analysed_data, '\*_manmade_new*', electrodes_to_use);
+add_to_summary(all_segments_erp_summary, 'test_all', folder_analysed_data, '\*_natural_new*', electrodes_to_use);
+add_to_summary(all_segments_erp_summary, 'test_all', folder_analysed_data, '\*_manmade_old*', electrodes_to_use);
+add_to_summary(all_segments_erp_summary, 'test_all', folder_analysed_data, '\*_natural_new*', electrodes_to_use);
 
-clear erp;
-count = 1;
-mean_all_subjects = struct();
-for electrode_selected = electrodes_to_use
-    [total_subjects erp{count}] = mean_erp_for_all_subjects_from_specific_electrode(folder_analysed_data, match_trial_type, electrode_selected);
-    count = count + 1;
-end
 
-all_segments_erp_summary.manmade_new_mean_metadata.total_subjects = total_subjects;
-all_segments_erp_summary.manmade_new_mean_metadata.used_subjects = electrodes_to_use;
-all_segments_erp_summary.manmade_new_mean_electrodes = erp;
 
-save(fullfile(folder_analysed_data, 'test_all'),'all_segments_erp_summary')
