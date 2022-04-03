@@ -1,12 +1,10 @@
-function [length_preprocessed_subjects, erp] = erp_subjects_mean(folder_analysed_data, event_name_str, match_trial_type, specified_electrode)
-
-length_preprocessed_subjects = size(match_trial_type, 1);
+function [total_subjects, erp] = erp_subjects_mean(session_data, event_name_str, specified_electrode)
 
 a_electrodes = [];
-for current_subject = 1:length_preprocessed_subjects
-    subject_data = load(fullfile(folder_analysed_data, match_trial_type(current_subject,:)));
-    datafield_name = fieldnames(subject_data);
-    electrode_data = subject_data.(datafield_name{1}).data.(['channel_' num2str(specified_electrode)]).(event_name_str);
+subject_names = fieldnames(session_data.all_segments_erp_summary.session);
+total_subjects = size(subject_names, 1);
+for subject = 1:total_subjects
+    electrode_data = session_data.all_segments_erp_summary.session.(subject_names{subject}).(['channel_' num2str(specified_electrode)]).(event_name_str);
     a_electrodes = [a_electrodes; electrode_data];
     mean_erp = mean(a_electrodes);
 end
