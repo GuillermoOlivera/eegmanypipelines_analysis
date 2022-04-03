@@ -140,15 +140,15 @@ for subject = subjects_to_use
         end
         
         ERP_matrix_manmade_new = ERP_matrix_manmade_new(~all(ERP_matrix_manmade_new == 0, 2),:);
-        ERP_matrix_natural_new = ERP_matrix_natural_new(~all(ERP_matrix_natural_new == 0, 2),:);
         ERP_matrix_manmade_old = ERP_matrix_manmade_old(~all(ERP_matrix_manmade_old == 0, 2),:);
+        ERP_matrix_natural_new = ERP_matrix_natural_new(~all(ERP_matrix_natural_new == 0, 2),:);
         ERP_matrix_natural_old = ERP_matrix_natural_old(~all(ERP_matrix_natural_old == 0, 2),:);
         
         % Save result of each electrode into cell
-        trial_data_manmadenew{electrode,:} = ERP_matrix_manmade_new;
-        trial_data_naturalnew{electrode,:} = ERP_matrix_natural_new;
-        trial_data_manmadeold{electrode,:} = ERP_matrix_manmade_old;
-        trial_data_naturalold{electrode,:} = ERP_matrix_natural_old;
+        trial_data_manmade_new{electrode,:} = ERP_matrix_manmade_new;
+        trial_data_manmade_old{electrode,:} = ERP_matrix_manmade_old;
+        trial_data_natural_new{electrode,:} = ERP_matrix_natural_new;
+        trial_data_natural_old{electrode,:} = ERP_matrix_natural_old;
 
         erp_manmadenew_mean = mean(ERP_matrix_manmade_new);
         erp_naturalnew_mean = mean(ERP_matrix_natural_new);
@@ -156,14 +156,14 @@ for subject = subjects_to_use
         erp_naturalold_mean = mean(ERP_matrix_natural_old);
         
         channel_summary = struct();
-        channel_summary.erp_manmadenew_mean = erp_manmadenew_mean - mean(erp_manmadenew_mean(1: pre_stimulus));
-        channel_summary.erp_naturalnew_mean = erp_naturalnew_mean - mean(erp_naturalnew_mean(1: pre_stimulus));
-        channel_summary.erp_manmadeold_mean = erp_manmadeold_mean - mean(erp_manmadeold_mean(1: pre_stimulus));
-        channel_summary.erp_naturalold_mean = erp_naturalold_mean - mean(erp_naturalold_mean(1: pre_stimulus));
+        channel_summary.manmade_new = erp_manmadenew_mean - mean(erp_manmadenew_mean(1: pre_stimulus));
+        channel_summary.natural_new = erp_naturalnew_mean - mean(erp_naturalnew_mean(1: pre_stimulus));
+        channel_summary.manmade_old = erp_manmadeold_mean - mean(erp_manmadeold_mean(1: pre_stimulus));
+        channel_summary.natural_old = erp_naturalold_mean - mean(erp_naturalold_mean(1: pre_stimulus));
         
         % FIXME: Do we need/want this info?
-        % info.num_events_ok = num_events_ok;
-        % all_segments_erp_summary.data.(['channel_' num2str(electrode)]) = channel_summary;
+%         info.num_events_ok = num_events_ok;
+        all_segments_erp_summary.data.(['channel_' num2str(electrode)]) = channel_summary;
     end
     
     % Save results into struct
@@ -174,24 +174,26 @@ for subject = subjects_to_use
     all_segments_erp_manmade_old.info = info;
     all_segments_erp_natural_new.info = info;
     
-    all_segments_erp_manmade_new.all_electrodes = trial_data_manmadenew;
-    all_segments_erp_natural_new.all_electrodes = trial_data_naturalnew;
-    all_segments_erp_manmade_old.all_electrodes = trial_data_manmadeold;
-    all_segments_erp_natural_new.all_electrodes = trial_data_naturalold;
+    all_segments_erp_manmade_new.all_electrodes = trial_data_manmade_new;
+    all_segments_erp_natural_new.all_electrodes = trial_data_natural_new;
+    all_segments_erp_manmade_old.all_electrodes = trial_data_manmade_old;
+    all_segments_erp_natural_new.all_electrodes = trial_data_natural_old;
 
-    save(fullfile(folder_analysed_data, [subject_root_name '_manmade_new']),'all_segments_erp_manmade_new')
-    save(fullfile(folder_analysed_data, [subject_root_name '_natural_new']),'all_segments_erp_natural_new')
-    save(fullfile(folder_analysed_data, [subject_root_name '_manmade_old']),'all_segments_erp_manmade_old')
-    save(fullfile(folder_analysed_data, [subject_root_name '_natural_new']),'all_segments_erp_natural_new')
-%     save(fullfile(folder_analysed_data, [subject_root_name '_summary']),'all_segments_erp_summary')
+%     save(fullfile(folder_analysed_data, [subject_root_name '_manmade_new']),'all_segments_erp_manmade_new')
+%     save(fullfile(folder_analysed_data, [subject_root_name '_natural_new']),'all_segments_erp_natural_new')
+%     save(fullfile(folder_analysed_data, [subject_root_name '_manmade_old']),'all_segments_erp_manmade_old')
+%     save(fullfile(folder_analysed_data, [subject_root_name '_natural_new']),'all_segments_erp_natural_new')
+    save(fullfile(folder_analysed_data, [subject_root_name '_summary']),'all_segments_erp_summary')
     
 end
 
 %% Post processing
-add_to_summary(all_segments_erp_summary, 'test_all', folder_analysed_data, '\*_manmade_new*', electrodes_to_use);
-add_to_summary(all_segments_erp_summary, 'test_all', folder_analysed_data, '\*_natural_new*', electrodes_to_use);
-add_to_summary(all_segments_erp_summary, 'test_all', folder_analysed_data, '\*_manmade_old*', electrodes_to_use);
-add_to_summary(all_segments_erp_summary, 'test_all', folder_analysed_data, '\*_natural_new*', electrodes_to_use);
-
-
-
+all_segments_erp_summary = struct();
+% FIXME: Make new function that takes event vector name to avoid extra load
+% e.g create_summary()
+tic
+add_to_summary(all_segments_erp_summary, 'erp_manmadenew_mean', 'test_all', folder_analysed_data, '\*_summary*', electrodes_to_use);
+add_to_summary(all_segments_erp_summary, 'erp_manmadeold_mean', 'test_all', folder_analysed_data, '\*_summary*', electrodes_to_use);
+add_to_summary(all_segments_erp_summary, 'erp_naturalnew_mean', 'test_all', folder_analysed_data, '\*_summary*', electrodes_to_use);
+add_to_summary(all_segments_erp_summary, 'erp_naturalold_mean', 'test_all', folder_analysed_data, '\*_summary*', electrodes_to_use);
+toc
