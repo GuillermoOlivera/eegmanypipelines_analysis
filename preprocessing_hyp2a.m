@@ -9,8 +9,8 @@ folder_generated_data = 'G:\_EEGManyPipelines\EMP_data\eeg_brainvision\_generate
 folder_analysed_data = 'G:\_EEGManyPipelines\EMP_data\eeg_brainvision\_analysis_hy2a_6';
 folder_subject_match = 'G:\_EEGManyPipelines\EMP_data\eeg_brainvision\*.vhdr';
 folder_subject_root = fileparts(folder_subject_match);
-session_filename 'all_session';
-post_session_filename 'all_post_session';
+session_filename = 'all_session';
+post_session_filename = 'all_post_session';
 subject_files = ls(folder_subject_match);
 subject_total = size(subject_files, 1);
 
@@ -193,12 +193,11 @@ save(fullfile(folder_analysed_data, session_filename), 'all_segments_erp_summary
 toc
 
 %% Post processing
-% all_segments_erp_summary = struct();
-% FIXME: Make new function that takes event vector name to avoid extra load
-% e.g create_summary()
+% all_segments_erp_summary actually not needed because we load it either
+% way
 tic
-add_to_summary(all_segments_erp_summary, 'manmade_new', session_filename, post_session_filename, folder_analysed_data, electrodes_to_use);
-add_to_summary(all_segments_erp_summary, 'manmade_old', session_filename, post_session_filename, folder_analysed_data, electrodes_to_use);
-add_to_summary(all_segments_erp_summary, 'natural_new', session_filename, post_session_filename, folder_analysed_data, electrodes_to_use);
-add_to_summary(all_segments_erp_summary, 'natural_old', session_filename, post_session_filename, folder_analysed_data, electrodes_to_use);
+add_to_summary('manmade_new', session_filename, post_session_filename, folder_analysed_data, electrodes_to_use);
+add_to_summary('manmade_old', session_filename, post_session_filename, folder_analysed_data, electrodes_to_use);
+add_to_summary('natural_new', session_filename, post_session_filename, folder_analysed_data, electrodes_to_use);
+add_to_summary('natural_old', session_filename, post_session_filename, folder_analysed_data, electrodes_to_use);
 toc
