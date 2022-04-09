@@ -3,12 +3,30 @@ clear all
 clc
 tic
 
+%%
+isOctave = exist('OCTAVE_VERSION', 'builtin') ~= 0;
+
+if isOctave
+    addpath('/media/cygnuseco/ext4_files/research/src/')
+    addpath('/media/cygnuseco/ext4_files/research/eeglab-2022.0')
+    addpath('/media/cygnuseco/ext4_files/research/bva-io')
+    pkg load signal
+end
+
+eeglab;
+
 %% Hardcoded folder and file paths
-folder = 'G:\_EEGManyPipelines\EMP_data\eeg_brainvision\';
-folder_generated_data = 'G:\_EEGManyPipelines\EMP_data\eeg_brainvision\_generated';
-folder_analysed_data = 'G:\_EEGManyPipelines\EMP_data\eeg_brainvision\_analysis_hy2a_6';
-folder_subject_match = 'G:\_EEGManyPipelines\EMP_data\eeg_brainvision\*.vhdr';
-folder_subject_root = fileparts(folder_subject_match);
+% folder = 'G:\_EEGManyPipelines\EMP_data\eeg_brainvision\';
+% folder_generated_data = 'G:\_EEGManyPipelines\EMP_data\eeg_brainvision\_generated';
+% folder_analysed_data = 'G:\_EEGManyPipelines\EMP_data\eeg_brainvision\_analysis_hy2a_6';
+% folder_subject_match = 'G:\_EEGManyPipelines\EMP_data\eeg_brainvision\*.vhdr';
+
+folder = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision';
+folder_subject_match = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/*.vhdr';
+folder_generated_data = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/_generated_matv7';
+folder_analysed_data = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/_analysed_2';
+
+folder_subject_root = fileparts(folder_subject_match); % not used/necessary in linux (!)
 session_filename = 'all_session';
 post_session_filename = 'all_post_session';
 subject_files = ls(folder_subject_match);
@@ -45,24 +63,35 @@ info.low_pass_upper_limit_hz = low_pass_upper_limit_hz;
 
 %% Memory pre-allocation
 all_segments_erp = struct();
+% trial_data_manmade_new = [];
+% trial_data_manmade_old = [];
+% trial_data_natural_new = [];
+% trial_data_natural_old = [];
 
 for subject = subjects_to_use
     subject_root_vhdr_name = subject_files(subject, :);
     subject_root_name = erase(subject_root_vhdr_name, '.vhdr');
+    if isOctave
+       [dir, name, ext] = fileparts(subject_root_vhdr_name);
+       subject_root_vhdr_name = [name ext];
+       [dir, subject_root_name, ext] = fileparts(subject_root_name);
+    end
     
     %% Save EEG data as .mat file
     subject_vhdr_filepath = fullfile(folder_subject_root, subject_root_vhdr_name);
     vmrk_to_mat(subject_vhdr_filepath, folder_generated_data);
-    
     %% Get trigger times from .vmrk file
-    all_triggers = zeros(number_of_trials,2);
     subject_root_vmrk_name = [subject_root_name '.vmrk'];  % the name of the .vmrk file
     subject_vmrk_filepath = fullfile(folder_subject_root, subject_root_vmrk_name);
+    all_triggers = zeros(number_of_trials,2);
     all_triggers = read_triggers_from_vmrk(subject_vmrk_filepath);
-    
     %% Load previously saved EEG data
     file_name_data = fullfile(folder_generated_data, [subject_root_name '.out.mat']);
+    tic
+    disp(["Loading mat file..." file_name_data])
     load(file_name_data);
+    toc
+    disp("Loaded.")
 
     %% EOG correction
     % Data were already re-referenced to channel 30 (POz)
@@ -82,7 +111,7 @@ for subject = subjects_to_use
         BB.('manmade_new') = zeros(number_of_trials, length_segment);
         BB.('manmade_old') = zeros(number_of_trials, length_segment);
         BB.('natural_new') = zeros(number_of_trials, length_segment);
-        BB.('natural_new') = zeros(number_of_trials, length_segment);
+        BB.('natural_old') = zeros(number_of_trials, length_segment);
 
         num_events_ok = 0; % count variable to record number of segments
         
@@ -122,6 +151,7 @@ for subject = subjects_to_use
                     
                     % only take the good segments
                     if  segment_ok == 1
+
                         num_events_ok = num_events_ok + 1; % count number of segments
                         
                         if condition == 1
@@ -152,41 +182,45 @@ for subject = subjects_to_use
         BB.('natural_old') = BB.('natural_old')(~all(BB.('natural_old') == 0, 2),:);
 
         % Save result of each electrode into cell
-        trial_data_manmade_new{electrode,:} = BB.('manmade_new');
-        trial_data_manmade_old{electrode,:} = BB.('manmade_old');
-        trial_data_natural_new{electrode,:} = BB.('natural_new');
-        trial_data_natural_old{electrode,:} = BB.('natural_old');
+        % trial_data_manmade_new[electrode,:] = BB.('manmade_new');
+        % trial_data_manmade_old[electrode,:] = BB.('manmade_old');
+        % trial_data_natural_new[electrode,:] = BB.('natural_new');
+        % trial_data_natural_old[electrode,:] = BB.('natural_old');
 
         erp_manmade_new_mean = mean(BB.('manmade_new'));
-        erp_natural_new_mean = mean(BB.('natural_new'));
         erp_manmade_old_mean = mean(BB.('manmade_old'));
+        erp_natural_new_mean = mean(BB.('natural_new'));
         erp_natural_old_mean = mean(BB.('natural_old'));
         
         channel_summary = struct();
         channel_summary.info = info;
-        channel_summary.('manmade_new') = erp_manmade_new_mean - mean(erp_manmade_new_mean(1: pre_stimulus));
-        channel_summary.('natural_new') = erp_natural_new_mean - mean(erp_natural_new_mean(1: pre_stimulus));
-        channel_summary.('manmade_old') = erp_manmade_old_mean - mean(erp_manmade_old_mean(1: pre_stimulus));
-        channel_summary.('natural_old') = erp_natural_old_mean - mean(erp_natural_old_mean(1: pre_stimulus));
+        try
+            channel_summary.('manmade_new') = erp_manmade_new_mean - mean(erp_manmade_new_mean(1 : pre_stimulus));
+            channel_summary.('manmade_old') = erp_manmade_old_mean - mean(erp_manmade_old_mean(1 : pre_stimulus));
+            channel_summary.('natural_new') = erp_natural_new_mean - mean(erp_natural_new_mean(1 : pre_stimulus));
+            channel_summary.('natural_old') = erp_natural_old_mean - mean(erp_natural_old_mean(1 : pre_stimulus));
+        catch err
+            % warning(err.identifier, err.message);
+            disp(["Error at subject (" num2str(subject) ") and  electrode ( " num2str(electrode) ")"])
+        end
         
         all_segments_erp_summary.session.(['subject_' num2str(subject)]).(['channel_' num2str(electrode)]) = channel_summary;
     end
 
     % Save individual results
-%     all_segments_erp_manmade_new.info = info;
-%     all_segments_erp_natural_new.info = info;
-%     all_segments_erp_manmade_old.info = info;
-%     all_segments_erp_natural_new.info = info;
-%     all_segments_erp_manmade_new.all_electrodes = trial_data_manmade_new;
-%     all_segments_erp_natural_new.all_electrodes = trial_data_natural_new;
-%     all_segments_erp_manmade_old.all_electrodes = trial_data_manmade_old;
-%     all_segments_erp_natural_new.all_electrodes = trial_data_natural_old;
-%     save(fullfile(folder_analysed_data, [subject_root_name '_manmade_new']),'all_segments_erp_manmade_new')
-%     save(fullfile(folder_analysed_data, [subject_root_name '_natural_new']),'all_segments_erp_natural_new')
-%     save(fullfile(folder_analysed_data, [subject_root_name '_manmade_old']),'all_segments_erp_manmade_old')
-%     save(fullfile(folder_analysed_data, [subject_root_name '_natural_new']),'all_segments_erp_natural_new')
+    % all_segments_erp_manmade_new.info = info;
+    % all_segments_erp_natural_new.info = info;
+    % all_segments_erp_manmade_old.info = info;
+    % all_segments_erp_natural_new.info = info;
+    % all_segments_erp_manmade_new.all_electrodes = BB.('manmade_new');
+    % all_segments_erp_manmade_old.all_electrodes = BB.('manmade_old');
+    % all_segments_erp_natural_new.all_electrodes = BB.('natural_new');
+    % all_segments_erp_natural_old.all_electrodes = BB.('natural_old');
+    % save(fullfile(folder_analysed_data, [subject_root_name '_manmade_new']),'all_segments_erp_manmade_new')
+    % save(fullfile(folder_analysed_data, [subject_root_name '_manmade_old']),'all_segments_erp_manmade_old')
+    % save(fullfile(folder_analysed_data, [subject_root_name '_natural_new']),'all_segments_erp_natural_new')
+    % save(fullfile(folder_analysed_data, [subject_root_name '_natural_old']),'all_segments_erp_natural_old')
 
-    
 end
 
 save(fullfile(folder_analysed_data, session_filename), 'all_segments_erp_summary')

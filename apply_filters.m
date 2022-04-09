@@ -16,7 +16,8 @@ notch_freq = 50;
 wo = notch_freq/(sample_rate_hz/2);
 qfactor = 35;
 bw = wo/qfactor;
-[b, a] = iirnotch(wo, bw);
+% [b, a] = iirnotch(wo, bw);
+[b, a] = pei_tseng_notch(wo, bw);
 notch_filtered_data = filtfilt(b, a, dataOut_high_pass); % zero-phase filtering
 notch_filtered_data = notch_filtered_data - mean(notch_filtered_data); % baseline correct
 

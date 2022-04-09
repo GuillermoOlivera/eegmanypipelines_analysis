@@ -6,7 +6,7 @@ function result = vmrk_to_mat(vhdr_filepath, result_filepath)
     savefile = fullfile(result_filepath, [name '.out.mat']);
     
     if (exist(savefile, 'file') == 2)
-        warning('File already exists, skipping: %s', savefile);
+        % warning('File already exists, skipping: %s', savefile);
         return;
     end
     
@@ -21,7 +21,7 @@ function result = vmrk_to_mat(vhdr_filepath, result_filepath)
     loaded_raw_data_from_eeglab.xmin = 0;
     loaded_raw_data_from_eeglab.xmax = datapoints/sample_rate_hz;
     
-    save(savefile, 'loaded_raw_data_from_eeglab', '-v7.3');
+    save(savefile, 'loaded_raw_data_from_eeglab', '-mat7-binary');
     clear EEG;
     clear loaded_raw_data_from_eeglab;
 end

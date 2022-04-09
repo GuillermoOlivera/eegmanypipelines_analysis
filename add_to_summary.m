@@ -3,6 +3,7 @@ function result = add_to_summary( event_name_str, input_filename, output_filenam
 filepath_input = fullfile(folder_analysed_data, [input_filename '.mat']);
 filepath_output = fullfile(folder_analysed_data, [output_filename '.mat']);
 
+disp(filepath_input)
 session_data = load(filepath_input, 'all_segments_erp_summary');
 
 if (exist(filepath_output, 'file') == 2)
