@@ -13,7 +13,7 @@ if isOctave
     pkg load signal
 end
 
-eeglab;
+% eeglab;
 
 %% Hardcoded folder and file paths
 % folder = 'G:\_EEGManyPipelines\EMP_data\eeg_brainvision\';
@@ -68,7 +68,6 @@ pre_stimulus = floor(pre_stimulus_ms / 1000 * sample_rate_hz);
 post_stimulus = floor(post_stimulus_ms / 1000 * sample_rate_hz);
 length_segment = pre_stimulus + post_stimulus + 1;
 
-all_segments_erp_summary = struct();
 info = struct();
 info.num_trials = num_trials;
 info.pre_stimulus_ms = pre_stimulus_ms;
@@ -90,7 +89,11 @@ for subject = subjects_to_use
     end
 
     subject_analysis_filename = fullfile(folder_analysed_data, [subject_root_name '_analysed.hdf']);
-    
+    isAnalysed = exist(subject_analysis_filename , 'file') == 2;
+
+    if isAnalysed
+        continue;
+    end
     %% Save EEG data as .mat file
     subject_vhdr_filepath = fullfile(folder_subject_root, subject_root_vhdr_name);
     vmrk_to_mat(subject_vhdr_filepath, folder_generated_data);
@@ -100,41 +103,27 @@ for subject = subjects_to_use
     all_triggers = zeros(num_trials,2);
     all_triggers = read_triggers_from_vmrk(subject_vmrk_filepath);
 
-    isAnalysed = exist(subject_analysis_filename , 'file') == 2
-    if isAnalysed
-        load(subject_analysis_filename);
-    else
-        %% Load previously saved EEG data
-        file_name_data = fullfile(folder_generated_data, [subject_root_name '.out.mat']);
-        tic
-        disp(["Loading mat file..." file_name_data])
-        load(file_name_data);
-        toc
-        disp("Loaded.")
-        tic
-        disp("Performing analysis...")
+    %% Load previously saved EEG data
+    file_name_data = fullfile(folder_generated_data, [subject_root_name '.out.mat']);
+    tic
+    disp(["Loading mat file..." file_name_data])
+    load(file_name_data);
+    toc
+    disp("Loaded.")
+    tic
+    disp("Performing analysis...")
 
-        %% EOG correction
-        % Data were already re-referenced to channel 30 (POz)
-        % Consider if we want to imprement other re-reference: all-channels
-        % average? Can we use symmetrical channels (eg left/right mastoid
-        % given that it seems an extensive cap (72 chn!), if this is not possible,
-        % it would probably make sense to go for the average too.. think about it)
-        vEOG_data = apply_filters(loaded_raw_data_from_eeglab.data(71,:), sample_rate_hz, low_pass_upper_limit_hz);
-        hEOG_data = apply_filters(loaded_raw_data_from_eeglab.data(72,:), sample_rate_hz, low_pass_upper_limit_hz);
-    end
+    %% EOG correction
+    % Data were already re-referenced to channel 30 (POz)
+    % Consider if we want to imprement other re-reference: all-channels
+    % average? Can we use symmetrical channels (eg left/right mastoid
+    % given that it seems an extensive cap (72 chn!), if this is not possible,
+    % it would probably make sense to go for the average too.. think about it)
+    vEOG_data = apply_filters(loaded_raw_data_from_eeglab.data(71,:), sample_rate_hz, low_pass_upper_limit_hz);
+    hEOG_data = apply_filters(loaded_raw_data_from_eeglab.data(72,:), sample_rate_hz, low_pass_upper_limit_hz);
 
     %% create ERP for each condition per electrode
     for electrode = electrodes_to_use
-        if isAnalysed
-            keyboard()
-            for id = 1:size(event_types, 1)
-                event_type = event_types(id, :);
-                all_segments_erp_summary.session.(['subject_' num2str(subject)]).(['channel_' num2str(electrode)]) = channel_summary;
-            end
-            continue;
-        end
-
         % Apply filter
         data = apply_filters(loaded_raw_data_from_eeglab.data(electrode,:), sample_rate_hz, low_pass_upper_limit_hz);
 
@@ -183,40 +172,54 @@ for subject = subjects_to_use
         end % for id = 1:size(event_types, 1)
         
         info.num_trials_ok = num_trials_ok;
+    end % for electrodes_to_use
+
+    % Save individual results
+    all_segments_erp = struct();
+    for id = 1:size(event_types, 1)
+        event_type = event_types(id, :);
+        all_segments_erp.(event_type).info = info;
+        all_segments_erp.(event_type).all_electrodes = BB.(event_type);
+    end
+    save(subject_analysis_filename, 'all_segments_erp', '-hdf5')
+    disp("Analysis done.")
+    toc
+
+end % for subjects_to_use
+
+%% Post processing I - mean for each subjects
+all_segments_erp_summary = struct();
+for subject = subjects_to_use
+    disp(subject)
+    subject_root_vhdr_name = subject_files(subject, :);
+    subject_root_name = erase(subject_root_vhdr_name, '.vhdr');
+    if isOctave
+        [dir, subject_root_name, ext] = fileparts(subject_root_name);
+    end
+
+    subject_analysis_filename = fullfile(folder_analysed_data, [subject_root_name '_analysed.hdf']);
+    load(subject_analysis_filename) % variable name: all_segments_erp
+    for electrode = electrodes_to_use
         channel_summary = struct();
-        channel_summary.info = info;
         for id = 1:size(event_types, 1)
             event_type = event_types(id, :);
-            BB.(event_type) = BB.(event_type)(~all(BB.(event_type) == 0, 2),:); % remove zero values
-            erp_manmade_new_mean = mean(BB.(event_type));
+            erp_segments_matrix = all_segments_erp.(event_type).all_electrodes;
+            erp_segments_matrix = erp_segments_matrix(~all(erp_segments_matrix == 0, 2),:); % remove zero values
+            erp_mean = mean(erp_segments_matrix);
             try
-                channel_summary.(event_type) = erp_manmade_new_mean - mean(erp_manmade_new_mean(1 : pre_stimulus));
+                channel_summary.(event_type) =  erp_mean - mean( erp_mean(1 : pre_stimulus)); % with baseline correction
             catch err
                 disp(["Error at subject (" num2str(subject) ") and  electrode (" num2str(electrode) ")"])
             end
         end
 
         all_segments_erp_summary.session.(['subject_' num2str(subject)]).(['channel_' num2str(electrode)]) = channel_summary;
-    end % for electrodes_to_use
-
-    % Save individual results
-    if ~isAnalysed
-        all_segments_erp = struct();
-        for id = 1:size(event_types, 1)
-            event_type = event_types(id, :);
-            all_segments_erp.(event_type).info = info;
-            all_segments_erp.(event_type).all_electrodes = BB.(event_type);
-        end
-        save(subject_analysis_filename, 'all_segments_erp', '-hdf5')
-        disp("Analysis done.")
-        toc
     end
+end
 
-end % for subjects_to_use
+save(fullfile(folder_analysed_data, [session_filename '.mat']), 'all_segments_erp_summary', '-v7')
 
-save(fullfile(folder_analysed_data, session_filename), 'all_segments_erp_summary', '-hdf5')
-
-%% Post processing
+%% Post processing II - mean for all subjects
 % all_segments_erp_summary actually not needed because we load it either way
 tic
 for id = 1:size(event_types, 1)

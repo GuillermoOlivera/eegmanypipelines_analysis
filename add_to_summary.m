@@ -25,6 +25,6 @@ all_subject_summary.(event_name_str).total_subjects = total_subjects;
 all_subject_summary.(event_name_str).electrodes_used = electrodes_to_use;
 all_subject_summary.(event_name_str).data = erp_matrix;
 
-save(filepath_output, 'all_subject_summary')
+save(filepath_output, 'all_subject_summary', '-v7')
 
 end
