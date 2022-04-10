@@ -24,10 +24,10 @@ eeglab;
 folder = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision';
 folder_subject_match = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/*.vhdr';
 folder_generated_data = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/_generated_matv7';
-folder_analysed_data = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/_analysed_2';
+folder_analysed_data = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/_analysed_3';
 
 folder_subject_root = fileparts(folder_subject_match); % not used/necessary in linux (!)
-session_filename = 'all_session';
+session_filename = 'all_session.mat';
 post_session_filename = 'all_post_session';
 subject_files = ls(folder_subject_match);
 subject_total = size(subject_files, 1);
@@ -208,22 +208,22 @@ for subject = subjects_to_use
     end
 
     % Save individual results
-    % all_segments_erp_manmade_new.info = info;
-    % all_segments_erp_natural_new.info = info;
-    % all_segments_erp_manmade_old.info = info;
-    % all_segments_erp_natural_new.info = info;
-    % all_segments_erp_manmade_new.all_electrodes = BB.('manmade_new');
-    % all_segments_erp_manmade_old.all_electrodes = BB.('manmade_old');
-    % all_segments_erp_natural_new.all_electrodes = BB.('natural_new');
-    % all_segments_erp_natural_old.all_electrodes = BB.('natural_old');
-    % save(fullfile(folder_analysed_data, [subject_root_name '_manmade_new']),'all_segments_erp_manmade_new')
-    % save(fullfile(folder_analysed_data, [subject_root_name '_manmade_old']),'all_segments_erp_manmade_old')
-    % save(fullfile(folder_analysed_data, [subject_root_name '_natural_new']),'all_segments_erp_natural_new')
-    % save(fullfile(folder_analysed_data, [subject_root_name '_natural_old']),'all_segments_erp_natural_old')
+    all_segments_erp_manmade_new.info = info;
+    all_segments_erp_natural_new.info = info;
+    all_segments_erp_manmade_old.info = info;
+    all_segments_erp_natural_new.info = info;
+    all_segments_erp_manmade_new.all_electrodes = BB.('manmade_new');
+    all_segments_erp_manmade_old.all_electrodes = BB.('manmade_old');
+    all_segments_erp_natural_new.all_electrodes = BB.('natural_new');
+    all_segments_erp_natural_old.all_electrodes = BB.('natural_old');
+    save(fullfile(folder_analysed_data, [subject_root_name '_manmade_new']),'all_segments_erp_manmade_new', '-hdf5')
+    save(fullfile(folder_analysed_data, [subject_root_name '_manmade_old']),'all_segments_erp_manmade_old', '-hdf5')
+    save(fullfile(folder_analysed_data, [subject_root_name '_natural_new']),'all_segments_erp_natural_new', '-hdf5')
+    save(fullfile(folder_analysed_data, [subject_root_name '_natural_old']),'all_segments_erp_natural_old', '-hdf5')
 
 end
 
-save(fullfile(folder_analysed_data, session_filename), 'all_segments_erp_summary')
+save(fullfile(folder_analysed_data, session_filename), 'all_segments_erp_summary', '-hdf5')
 toc
 
 %% Post processing

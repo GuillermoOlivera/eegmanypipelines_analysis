@@ -1,4 +1,4 @@
-function [erp_manmade, erp_natural] = function get_erp_from_trial(all_triggers, data, vEOG_data)
+function [erp_manmade, erp_natural] = get_erp_from_trial(all_triggers, data, vEOG_data)
 
 stimulus_time = all_triggers(trial,2);
 channel_segment = data(electrode,stimulus_time-100:stimulus_time+299); % original_ not electrode but channel!!
