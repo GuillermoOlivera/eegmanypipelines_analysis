@@ -46,17 +46,27 @@ event_types = ['manmade_new' ;
                'natural_new' ;
                'natural_old']
 
-condition_values = {
-        [1030 1031 1039 1040 1041 1049]; % new man-made
-        [2030 2031 2039 2040 2041 2049 2091]; % new natutal env.
-        [1110 1111 1119 1120 1121 1129]; % old man-made
-        [2110 2111 2119 2120 2121 2129]; % old man-made
-               };
+% Use the digit "6" to ignore code position
+condition_values = [1066;
+                    1166;
+                    2066
+                    2166];
 
 for id = 1:size(event_types, 1)
     event_type = event_types(id, :);
-    event_info.(event_type).conditions_to_use = condition_values{id};
+    event_info.(event_type).conditions_to_use = condition_values(id);
 end
+
+%% Channel position
+% Frontal central channels
+%     9->FC5
+%     10->FC3
+%     11->FC1
+%     44->FC6
+%     45->FC4
+%     46->FC2
+%     47->FCz
+fronto_central_channels = [9, 10, 11, 44, 45, 46, 47];
 
 %%
 num_trials = 1200;
@@ -142,7 +152,7 @@ for subject = subjects_to_use
             
             for trial = (1:num_trials) % loop through all trials
                 
-                if (any(all_triggers(trial,1) == conditions_to_use))
+                if (check_if_condition_match(conditions_to_use, all_triggers(trial,1)))
                     stimulus_timepoint = all_triggers(trial,2);
                     selected_datapoints = stimulus_timepoint - pre_stimulus:stimulus_timepoint + post_stimulus;
                     channel_segment = data(selected_datapoints); % original_ not electrode but channel!!
