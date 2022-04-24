@@ -37,7 +37,7 @@ if (exist(folder_analysed_data, 'file') == 0)
 end
 
 %% Choose subjects and electrodes (channels)
-subjects_to_use = 1:1 % subject_total;
+subjects_to_use = 1:subject_total;
 electrodes_to_use = 1:72;
     
 event_info = struct();
@@ -73,7 +73,7 @@ num_trials = 1200;
 sample_rate_hz = 512;
 low_pass_upper_limit_hz = 30;
 pre_stimulus_ms = 200;
-post_stimulus_ms = 600;
+post_stimulus_ms = 1600;
 baseline_correction_time_ms = 200;
 
 baseline_correction_samples = floor(baseline_correction_time_ms / 1000 * 512);
@@ -140,18 +140,20 @@ for subject = subjects_to_use
     %% create ERP for each condition per electrode
     electrodes_erp = struct();
     for electrode = electrodes_to_use
-        elec_str = ['ch_' num2str(electrode)];
+        electrode_id_str = ['ch_' num2str(electrode)];
         for id = 1:size(event_types, 1)
             event_type = event_types(id, :);
-            electrodes_erp.(elec_str).(event_type) = zeros(size(all_triggers, 1), length_segment);
-            electrodes_erp.(elec_str).([event_type '_num_trials_ok']) = 0;
+            electrodes_erp.(electrode_id_str).(event_type) = zeros(size(all_triggers, 1), length_segment);
+            electrodes_erp.(electrode_id_str).([event_type '_num_trials_ok']) = 0;
         end
     end
 
     for electrode = electrodes_to_use
         % Apply filter
-        elec_str = ['ch_' num2str(electrode)];
+        electrode_id_str = ['ch_' num2str(electrode)];
         data = apply_filters(loaded_raw_data_from_eeglab.data(electrode, :), sample_rate_hz, low_pass_upper_limit_hz);
+        all_triggers_tmp = all_triggers;
+        all_triggers_tmp(1,3) = false; % use another dimension to "mark" data
 
         %% Important part starts here. Here we go through each defined event type (eg. manmade new, natural new, ...)
         for id = 1:size(event_types, 1)
@@ -160,16 +162,23 @@ for subject = subjects_to_use
             trial_str = [event_type '_num_trials_ok'];
 
             for trigger_id = 1:number_of_trials
-                trigger_code = all_triggers(trigger_id);
+                if all_triggers_tmp(trigger_id,3) == true
+                    continue;
+                end
+                
+                trigger_code = all_triggers_tmp(trigger_id, 1);
                 % is_match = check_if_condition_match(condition_to_use, trigger_code);
                 cond = fdec2base(condition_to_use, 10) - '0';
                 trial = fdec2base(trigger_code, 10) - '0';
 
                 if trial(cond~=6) == cond(cond~=6)
+                    all_triggers_tmp(trigger_id, 3) = true; % mark event to avoid checking again on next condition check (conditions must be mutually exclusive!)
                     is_match = true;
-                    stimulus_datapoint = all_triggers(trigger_id, 2); % vmrk file gives datapoint back! NOT timepoint
+                    stimulus_datapoint = all_triggers_tmp(trigger_id, 2); % vmrk file gives datapoint back! NOT timepoint
                     selected_datapoints = stimulus_datapoint - pre_stimulus:stimulus_datapoint + post_stimulus;
                     channel_segment = data(selected_datapoints); % original_ not electrode but channel!!
+
+                    % disp(['condition=' num2str(condition_to_use) ' trigger_code=' num2str(trigger_code) ' trigger_time=' num2str(stimulus_datapoint)]);
 
                     %% check there is no eye blink or artifact on any of the channels
                     % peak-to-peak voltage vs threshold voltage
@@ -183,20 +192,20 @@ for subject = subjects_to_use
                     end
 
                     % only takes good segments
-                    electrodes_erp.(elec_str).(trial_str) = electrodes_erp.(elec_str).(trial_str) + 1; % count number of segments
-                    tmp_ok_trial_id = electrodes_erp.(elec_str).(trial_str);
-                    electrodes_erp.(elec_str).(event_type)(tmp_ok_trial_id, :) = channel_segment - mean(channel_segment(1:baseline_correction_samples));
+                    electrodes_erp.(electrode_id_str).(trial_str) = electrodes_erp.(electrode_id_str).(trial_str) + 1; % count number of segments
+                    tmp_ok_trial_id = electrodes_erp.(electrode_id_str).(trial_str);
+                    electrodes_erp.(electrode_id_str).(event_type)(tmp_ok_trial_id, :) = channel_segment - mean(channel_segment(1:baseline_correction_samples));
                 end % end if is_match
-            end
+            end % for trigger_id
         end % for id = 1:size(event_types, 1)
         
     end % for electrodes_to_use
 
     for electrode = electrodes_to_use
-        elec_str = ['ch_' num2str(electrode)];
+        electrode_id_str = ['ch_' num2str(electrode)];
         for id = 1:size(event_types, 1)
             event_type = event_types(id, :);
-            electrodes_erp.(elec_str).(event_type) = electrodes_erp.(elec_str).(event_type)(~all(electrodes_erp.(elec_str).(event_type) == 0, 2),:); % remove rows filled with zeros
+            electrodes_erp.(electrode_id_str).(event_type) = electrodes_erp.(electrode_id_str).(event_type)(~all(electrodes_erp.(electrode_id_str).(event_type) == 0, 2),:); % remove rows filled with zeros
         end
     end
 
@@ -211,39 +220,44 @@ end % for subjects_to_use
 
 
 %%%%%  Post processing I - mean for each subjects
-%%% all_segments_erp_summary = struct();
-%%% for subject = subjects_to_use
-%%%     disp(subject)
-%%%     subject_root_vhdr_name = subject_files(subject, :);
-%%%     subject_root_name = erase(subject_root_vhdr_name, '.vhdr');
-%%%     if isOctave
-%%%         [dir, subject_root_name, ext] = fileparts(subject_root_name);
-%%%     end
-%%% 
-%%%     subject_analysis_filename = fullfile(folder_analysed_data, [subject_root_name '_analysed.hdf']);
-%%%     load(subject_analysis_filename) % variable name: all_segments_erp
-%%%     for electrode = electrodes_to_use
-%%%         channel_summary = struct();
-%%%         for id = 1:size(event_types, 1)
-%%%             event_type = event_types(id, :);
-%%%             erp_segments_matrix = all_segments_erp.(event_type).all_electrodes;
-%%%             erp_segments_matrix = erp_segments_matrix(~all(erp_segments_matrix == 0, 2),:); % remove zero values
-%%%             erp_mean = mean(erp_segments_matrix);
-%%%             try
-%%%                 channel_summary.(event_type) =  erp_mean - mean( erp_mean(1 : pre_stimulus)); % with baseline correction
-%%%             catch err
-%%%                 disp(["Error at subject (" num2str(subject) ") and  electrode (" num2str(electrode) ")"])
-%%%             end
-%%%         end
-%%% 
-%%%         all_segments_erp_summary.session.(['subject_' num2str(subject)]).(['channel_' num2str(electrode)]) = channel_summary;
-%%%     end
-%%% end
-%%% 
+all_segments_erp_summary = struct();
+erp_test_plot_y = [];
+for subject = subjects_to_use
+    disp(subject)
+    subject_root_vhdr_name = subject_files(subject, :);
+    subject_root_name = erase(subject_root_vhdr_name, '.vhdr');
+    if isOctave
+        [dir, subject_root_name, ext] = fileparts(subject_root_name);
+    end
+
+    subject_analysis_filename = fullfile(folder_analysed_data, [subject_root_name '_analysed.hdf']);
+    load(subject_analysis_filename) % variable name: all_segments_erp
+    for electrode = electrodes_to_use
+        channel_summary = struct();
+        for id = 1:size(event_types, 1)
+            event_type = event_types(id, :);
+            electrode_id_str = ['ch_' num2str(electrode)];
+            erp_segments_matrix = all_segments_erp.all_electrodes.(electrode_id_str).(event_type);
+
+            if id == 1 && (electrode == 58 || electrode == 59 || electrode == 60 || electrode == 62)
+                erp_test_plot_y = [erp_test_plot_y; mean(erp_segments_matrix)];
+                %%% try
+                %%%     channel_summary.(event_type) =  erp_mean - mean( erp_mean(1 : pre_stimulus)); % with baseline correction
+                %%% catch err
+                %%%     disp(["Error at subject (" num2str(subject) ") and  electrode (" num2str(electrode) ")"])
+                %%% end
+            end
+        end
+
+        %%% all_segments_erp_summary.session.(['subject_' num2str(subject)]).(['channel_' num2str(electrode)]) = channel_summary;
+    end
+end
+plot(mean(erp_test_plot_y)'*-1)
+
 %%% save(fullfile(folder_analysed_data, [session_filename '.mat']), 'all_segments_erp_summary', '-v7')
-%%% 
-%%% 
-%%% 
+ 
+ 
+ 
 %%%%%  Post processing II - mean for all subjects
 %%%%  all_segments_erp_summary actually not needed because we load it either way
 %%% tic
@@ -257,59 +271,54 @@ end % for subjects_to_use
 
 %% Post processing III - do welch power spectral analysis
 
-tic
-disp("Start spectral analysis...")
-
-Legend=cell(2,1)%  two positions 
-iter = 1;
-erp_segment_test = [];
-for subject = subjects_to_use
-    subject_root_vhdr_name = subject_files(subject, :);
-    subject_root_name = erase(subject_root_vhdr_name, '.vhdr');
-    if isOctave
-        [dir, subject_root_name, ext] = fileparts(subject_root_name);
-    end
-
-    subject_analysis_filename = fullfile(folder_analysed_data, [subject_root_name '_analysed.hdf']);
-    load(subject_analysis_filename) % variable name: all_segments_erp
-    disp(subject)
-    for electrode = electrodes_to_use
-        channel_spectral_power_density = struct();
-        for id = 1:size(event_types, 1)
-            event_type = event_types(id, :);
-            erp_segments_matrix = all_segments_erp.(event_type).all_electrodes;
-
-            num_trials_in_event = size(erp_segments_matrix, 1);
-
-            erp_segment = mean(erp_segments_matrix);
-            if id == 1 && electrode == 61
-                erp_segment_test = [erp_segment_test; erp_segment];
-            end
-            
-            %%-----------------
-            % Define window length (4 seconds)
-
-            %%%window = 0.6 * sample_rate_hz; % 600ms
-            %%%data = erp_segment;
-            %%%[spectra, Pxx_ci, freq] = pwelch(data,
-            %%%                            20,
-            %%%                            0.5,
-            %%%                            [],
-            %%%                            sample_rate_hz);
-
-
-            % low, high = 0.5, 4 % alpha limits
-            %%-----------------
-
-            % channel_spectral_power_density.(event_type).alpha_power = pwelch_alpha;
-            % channel_spectral_power_density.(event_type).beta_power = pwelch_beta;
-
-        end
-
-        % all_segments_erp_summary.session.(['subject_' num2str(subject)]).(['channel_' num2str(electrode)]) = channel_summary;
-    end
-end
-plot(mean(erp_segment_test)');
+%%% tic
+%%% disp("Start spectral analysis...")
+%%% 
+%%% Legend=cell(2,1)%  two positions 
+%%% iter = 1;
+%%% erp_segment_test = [];
+%%% erp_segment_test2 = [];
+%%% for subject = subjects_to_use
+%%%     subject_root_vhdr_name = subject_files(subject, :);
+%%%     subject_root_name = erase(subject_root_vhdr_name, '.vhdr');
+%%%     if isOctave
+%%%         [dir, subject_root_name, ext] = fileparts(subject_root_name);
+%%%     end
+%%% 
+%%%     subject_analysis_filename = fullfile(folder_analysed_data, [subject_root_name '_analysed.hdf']);
+%%%     load(subject_analysis_filename) % variable name: all_segments_erp
+%%%     disp(subject)
+%%%     for electrode = electrodes_to_use
+%%%         channel_spectral_power_density = struct();
+%%%         for id = 1:size(event_types, 1)
+%%%             event_type = event_types(id, :);
+%%%             electrode_id_str = ['ch_' num2str(electrode)];
+%%%             erp_segments_matrix = all_segments_erp.all_electrodes.(electrode_id_str).(event_type);
+%%% 
+%%%             num_trials_in_event = size(erp_segments_matrix, 1);
+%%% 
+%%%             %%-----------------
+%%%             if id == 2 && electrode == 11
+%%%                 % window = 0.6 * sample_rate_hz; % 600ms
+%%%                 data = mean(erp_segments_matrix);
+%%%                 [spectra, Pxx_ci, freq] = pwelch(data, [], [], [], sample_rate_hz);
+%%%                 keyboard()
+%%%                 % erp_segment = mean(erp_segments_matrix);
+%%%                 erp_segment_test = [erp_segment_test; Pxx_ci];
+%%%                 erp_segment_test2 = [erp_segment_test2; freq];
+%%%             end
+%%%             % low, high = 0.5, 4 % alpha limits
+%%%             %%-----------------
+%%% 
+%%%             % channel_spectral_power_density.(event_type).alpha_power = pwelch_alpha;
+%%%             % channel_spectral_power_density.(event_type).beta_power = pwelch_beta;
+%%% 
+%%%         end
+%%% 
+%%%         % all_segments_erp_summary.session.(['subject_' num2str(subject)]).(['channel_' num2str(electrode)]) = channel_summary;
+%%%     end
+%%% end
+%%% plot(mean(erp_segment_test)', mean(erp_segment_test2)');
 % Legend{iter}=strcat('Electrode', num2str(electrode));
 % iter = iter + 1;
 % legend(Legend);
