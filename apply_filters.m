@@ -19,13 +19,13 @@ bw = wo/qfactor;
 % [b, a] = iirnotch(wo, bw);
 [b, a] = pei_tseng_notch(wo, bw);
 notch_filtered_data = filtfilt(b, a, dataOut_high_pass); % zero-phase filtering
-notch_filtered_data = notch_filtered_data - mean(notch_filtered_data); % baseline correct
+% notch_filtered_data = notch_filtered_data - mean(notch_filtered_data); % baseline correct
 
 %%  low pass ideally at 30Hz
 filter_order = 3;
 [b, a] = butter(filter_order, high_cutoff_freq / (sample_rate_hz / 2)); % low pass digital filter design
 dataOut_low_pass = filtfilt(b, a, notch_filtered_data); % zero-phase filtering     % if only low-pass
-dataOut_low_pass = dataOut_low_pass - mean(dataOut_low_pass);
+% dataOut_low_pass = dataOut_low_pass - mean(dataOut_low_pass);
 data_lp =  dataOut_low_pass; % replace all_data with filtered data
 
 % %%  notch filter

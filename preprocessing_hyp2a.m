@@ -24,7 +24,7 @@ end
 folder = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision';
 folder_subject_match = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/*.vhdr';
 folder_generated_data = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/_generated_matv7';
-folder_analysed_data = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/_analysed_5';
+folder_analysed_data = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/_analysed_11';
 
 folder_subject_root = fileparts(folder_subject_match); % not used/necessary in linux (!)
 session_filename = 'all_session';
@@ -37,7 +37,7 @@ if (exist(folder_analysed_data, 'file') == 0)
 end
 
 %% Choose subjects and electrodes (channels)
-subjects_to_use = 1:subject_total;
+subjects_to_use = 1:5 % subject_total;
 electrodes_to_use = 1:72;
     
 event_info = struct();
@@ -57,7 +57,7 @@ for id = 1:size(event_types, 1)
     event_info.(event_type).conditions_to_use = condition_values(id);
 end
 
-%% Channel position
+%% Channel position for hypothesis 2 - NOT USED YET
 % Frontal central channels
 %     9->FC5
 %     10->FC3
@@ -72,8 +72,11 @@ fronto_central_channels = [9, 10, 11, 44, 45, 46, 47];
 num_trials = 1200;
 sample_rate_hz = 512;
 low_pass_upper_limit_hz = 30;
-pre_stimulus_ms = 100;
+pre_stimulus_ms = 200;
 post_stimulus_ms = 600;
+baseline_correction_time_ms = 200;
+
+baseline_correction_samples = floor(baseline_correction_time_ms / 1000 * 512);
 pre_stimulus = floor(pre_stimulus_ms / 1000 * sample_rate_hz);
 post_stimulus = floor(post_stimulus_ms / 1000 * sample_rate_hz);
 length_segment = pre_stimulus + post_stimulus + 1;
@@ -91,19 +94,23 @@ all_segments_erp = struct();
 
 for subject = subjects_to_use
     subject_root_vhdr_name = subject_files(subject, :);
+
     subject_root_name = erase(subject_root_vhdr_name, '.vhdr');
+
     if isOctave
        [dir, name, ext] = fileparts(subject_root_vhdr_name);
        subject_root_vhdr_name = [name ext];
        [dir, subject_root_name, ext] = fileparts(subject_root_name);
     end
 
+    %% Check if file already exists and skip analysis if true
     subject_analysis_filename = fullfile(folder_analysed_data, [subject_root_name '_analysed.hdf']);
     isAnalysed = exist(subject_analysis_filename , 'file') == 2;
 
     if isAnalysed
         continue;
     end
+    
     %% Save EEG data as .mat file
     subject_vhdr_filepath = fullfile(folder_subject_root, subject_root_vhdr_name);
     vmrk_to_mat(subject_vhdr_filepath, folder_generated_data);
@@ -135,7 +142,9 @@ for subject = subjects_to_use
     %% create ERP for each condition per electrode
     for electrode = electrodes_to_use
         % Apply filter
+        disp(""); tic
         data = apply_filters(loaded_raw_data_from_eeglab.data(electrode,:), sample_rate_hz, low_pass_upper_limit_hz);
+        toc
 
         BB = struct();
         for id = 1:size(event_types, 1)
@@ -145,7 +154,7 @@ for subject = subjects_to_use
 
         num_trials_ok = 0; % count variable to record number of segments
 
-        %% Important part stars here. Here we go through each defined event type
+        %% Important part starts here. Here we go through each defined event type (eg. manmade new, natural new, ...)
         for id = 1:size(event_types, 1)
             event_type = event_types(id, :);
             conditions_to_use = event_info.(event_type).conditions_to_use;
@@ -175,7 +184,7 @@ for subject = subjects_to_use
                     % only take the good segments
                     if  segment_ok == 1
                         num_trials_ok = num_trials_ok + 1; % count number of segments
-                        BB.(event_type)(num_trials_ok, 1:length_segment) = channel_segment;
+                        BB.(event_type)(num_trials_ok, 1:length_segment) = channel_segment - mean(channel_segment(1:baseline_correction_samples));
                     end 
                 end % if (any(all_triggers(trial,1) == conditions_to_use))
             end % for trial = (1:num_trials) % loop through all trials
@@ -189,6 +198,7 @@ for subject = subjects_to_use
     for id = 1:size(event_types, 1)
         event_type = event_types(id, :);
         all_segments_erp.(event_type).info = info;
+        BB.(event_type) = BB.(event_type)(~all(BB.(event_type) == 0, 2),:); % remove lines filled with zeros
         all_segments_erp.(event_type).all_electrodes = BB.(event_type);
     end
     save(subject_analysis_filename, 'all_segments_erp', '-hdf5')
@@ -197,10 +207,62 @@ for subject = subjects_to_use
 
 end % for subjects_to_use
 
-%% Post processing I - mean for each subjects
-all_segments_erp_summary = struct();
+
+
+%%%%%  Post processing I - mean for each subjects
+%%% all_segments_erp_summary = struct();
+%%% for subject = subjects_to_use
+%%%     disp(subject)
+%%%     subject_root_vhdr_name = subject_files(subject, :);
+%%%     subject_root_name = erase(subject_root_vhdr_name, '.vhdr');
+%%%     if isOctave
+%%%         [dir, subject_root_name, ext] = fileparts(subject_root_name);
+%%%     end
+%%% 
+%%%     subject_analysis_filename = fullfile(folder_analysed_data, [subject_root_name '_analysed.hdf']);
+%%%     load(subject_analysis_filename) % variable name: all_segments_erp
+%%%     for electrode = electrodes_to_use
+%%%         channel_summary = struct();
+%%%         for id = 1:size(event_types, 1)
+%%%             event_type = event_types(id, :);
+%%%             erp_segments_matrix = all_segments_erp.(event_type).all_electrodes;
+%%%             erp_segments_matrix = erp_segments_matrix(~all(erp_segments_matrix == 0, 2),:); % remove zero values
+%%%             erp_mean = mean(erp_segments_matrix);
+%%%             try
+%%%                 channel_summary.(event_type) =  erp_mean - mean( erp_mean(1 : pre_stimulus)); % with baseline correction
+%%%             catch err
+%%%                 disp(["Error at subject (" num2str(subject) ") and  electrode (" num2str(electrode) ")"])
+%%%             end
+%%%         end
+%%% 
+%%%         all_segments_erp_summary.session.(['subject_' num2str(subject)]).(['channel_' num2str(electrode)]) = channel_summary;
+%%%     end
+%%% end
+%%% 
+%%% save(fullfile(folder_analysed_data, [session_filename '.mat']), 'all_segments_erp_summary', '-v7')
+%%% 
+%%% 
+%%% 
+%%%%%  Post processing II - mean for all subjects
+%%%%  all_segments_erp_summary actually not needed because we load it either way
+%%% tic
+%%% for id = 1:size(event_types, 1)
+%%%     event_type = event_types(id, :);
+%%%     add_to_summary(event_type, session_filename, post_session_filename, folder_analysed_data, electrodes_to_use);
+%%% end
+%%% toc
+
+
+
+%% Post processing III - do welch power spectral analysis
+
+tic
+disp("Start spectral analysis...")
+
+Legend=cell(2,1)%  two positions 
+iter = 1;
+erp_segment_test = [];
 for subject = subjects_to_use
-    disp(subject)
     subject_root_vhdr_name = subject_files(subject, :);
     subject_root_name = erase(subject_root_vhdr_name, '.vhdr');
     if isOctave
@@ -209,31 +271,47 @@ for subject = subjects_to_use
 
     subject_analysis_filename = fullfile(folder_analysed_data, [subject_root_name '_analysed.hdf']);
     load(subject_analysis_filename) % variable name: all_segments_erp
+    disp(subject)
     for electrode = electrodes_to_use
-        channel_summary = struct();
+        channel_spectral_power_density = struct();
         for id = 1:size(event_types, 1)
             event_type = event_types(id, :);
             erp_segments_matrix = all_segments_erp.(event_type).all_electrodes;
-            erp_segments_matrix = erp_segments_matrix(~all(erp_segments_matrix == 0, 2),:); % remove zero values
-            erp_mean = mean(erp_segments_matrix);
-            try
-                channel_summary.(event_type) =  erp_mean - mean( erp_mean(1 : pre_stimulus)); % with baseline correction
-            catch err
-                disp(["Error at subject (" num2str(subject) ") and  electrode (" num2str(electrode) ")"])
+
+            num_trials_in_event = size(erp_segments_matrix, 1);
+
+            erp_segment = mean(erp_segments_matrix);
+            if id == 1 && electrode == 61
+                erp_segment_test = [erp_segment_test; erp_segment];
             end
+            
+            %%-----------------
+            % Define window length (4 seconds)
+
+            %%%window = 0.6 * sample_rate_hz; % 600ms
+            %%%data = erp_segment;
+            %%%[spectra, Pxx_ci, freq] = pwelch(data,
+            %%%                            20,
+            %%%                            0.5,
+            %%%                            [],
+            %%%                            sample_rate_hz);
+
+
+            % low, high = 0.5, 4 % alpha limits
+            %%-----------------
+
+            % channel_spectral_power_density.(event_type).alpha_power = pwelch_alpha;
+            % channel_spectral_power_density.(event_type).beta_power = pwelch_beta;
+
         end
 
-        all_segments_erp_summary.session.(['subject_' num2str(subject)]).(['channel_' num2str(electrode)]) = channel_summary;
+        % all_segments_erp_summary.session.(['subject_' num2str(subject)]).(['channel_' num2str(electrode)]) = channel_summary;
     end
 end
+plot(mean(erp_segment_test)');
+% Legend{iter}=strcat('Electrode', num2str(electrode));
+% iter = iter + 1;
+% legend(Legend);
+% Define delta lower and upper limits
 
-save(fullfile(folder_analysed_data, [session_filename '.mat']), 'all_segments_erp_summary', '-v7')
-
-%% Post processing II - mean for all subjects
-% all_segments_erp_summary actually not needed because we load it either way
-tic
-for id = 1:size(event_types, 1)
-    event_type = event_types(id, :);
-    add_to_summary(event_type, session_filename, post_session_filename, folder_analysed_data, electrodes_to_use);
-end
 toc

@@ -39,7 +39,7 @@ Requirements [6/11]:
 - [X] Go through saved ERP of all subjects and create mean ERP across all subjects
 - [X] Make trigger code more error prone/generic
 - [X] Define (simply) _fronto-central_ channels (only for /second/ hypothesis)
-- [ ] Extract theta & beta power from _one_ channel
+- [ ] Extract theta & beta power from _one_ channel -> Follow [[eww:https://raphaelvallat.com/bandpower.html][pwelch calculation on python]]
 - [ ] Extract theta & beta power from _any_ channel
 - [ ] Extract spectral power from channel: _any_ frequency
 - [ ] Extract spectral power from channel: at any time (?)
