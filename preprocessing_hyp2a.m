@@ -24,7 +24,7 @@ end
 folder = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision';
 folder_subject_match = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/*.vhdr';
 folder_generated_data = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/_generated_matv7';
-folder_analysed_data = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/_analysed_14';
+folder_analysed_data = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/_analysed_2';
 
 folder_subject_root = fileparts(folder_subject_match); % not used/necessary in linux (!)
 session_filename = 'all_session';
@@ -54,7 +54,7 @@ condition_values = [1066;
 
 for id = 1:size(event_types, 1)
     event_type = event_types(id, :);
-    event_info.(event_type).conditions_to_use = condition_values(id);
+    event_info.(event_type).condition_to_use = condition_values(id);
 end
 
 %% Channel position for hypothesis 2 - NOT USED YET
@@ -119,6 +119,7 @@ for subject = subjects_to_use
     subject_vmrk_filepath = fullfile(folder_subject_root, subject_root_vmrk_name);
     all_triggers = zeros(num_trials,2);
     all_triggers = read_triggers_from_vmrk(subject_vmrk_filepath);
+    number_of_trials = size(all_triggers, 1);
 
     %% Load previously saved EEG data
     file_name_data = fullfile(folder_generated_data, [subject_root_name '.out.mat']);
@@ -139,61 +140,63 @@ for subject = subjects_to_use
     %% create ERP for each condition per electrode
     electrodes_erp = struct();
     for electrode = electrodes_to_use
+        elec_str = ['ch_' num2str(electrode)];
         for id = 1:size(event_types, 1)
             event_type = event_types(id, :);
-            electrodes_erp.(['ch_' num2str(electrode)]).(event_type) = zeros(size(all_triggers, 1), length_segment);
-            electrodes_erp.(['ch_' num2str(electrode)]).([event_type '_num_trials_ok']) = 0;
+            electrodes_erp.(elec_str).(event_type) = zeros(size(all_triggers, 1), length_segment);
+            electrodes_erp.(elec_str).([event_type '_num_trials_ok']) = 0;
         end
     end
 
     for electrode = electrodes_to_use
         % Apply filter
+        elec_str = ['ch_' num2str(electrode)];
         data = apply_filters(loaded_raw_data_from_eeglab.data(electrode, :), sample_rate_hz, low_pass_upper_limit_hz);
 
         %% Important part starts here. Here we go through each defined event type (eg. manmade new, natural new, ...)
         for id = 1:size(event_types, 1)
             event_type = event_types(id, :);
-            condition_to_use = event_info.(event_type).conditions_to_use;
+            condition_to_use = event_info.(event_type).condition_to_use;
+            trial_str = [event_type '_num_trials_ok'];
 
-            for trigger_id = 1:size(all_triggers, 1)
+            for trigger_id = 1:number_of_trials
                 trigger_code = all_triggers(trigger_id);
-                is_match = check_if_condition_match(condition_to_use, trigger_code);
-                if is_match == true
+                % is_match = check_if_condition_match(condition_to_use, trigger_code);
+                cond = fdec2base(condition_to_use, 10) - '0';
+                trial = fdec2base(trigger_code, 10) - '0';
+
+                if trial(cond~=6) == cond(cond~=6)
+                    is_match = true;
                     stimulus_datapoint = all_triggers(trigger_id, 2); % vmrk file gives datapoint back! NOT timepoint
                     selected_datapoints = stimulus_datapoint - pre_stimulus:stimulus_datapoint + post_stimulus;
                     channel_segment = data(selected_datapoints); % original_ not electrode but channel!!
-                    vEOG_segment = vEOG_data(selected_datapoints); % get EOG segment
-                    hEOG_segment = hEOG_data(selected_datapoints);
 
                     %% check there is no eye blink or artifact on any of the channels
                     % peak-to-peak voltage vs threshold voltage
                     % peak-to-peak measure less distorted by slow changes in baseline voltage, reducing the impact of source of
                     % misses and false alarms, and increasing the sensitivity of the artifact rejection process (see Luck'book)
-                    segment_ok = 1;
+                    if (max(channel_segment) - min(channel_segment)) > 200 ||...
+                            ((max(vEOG_data(selected_datapoints)) - min(vEOG_data(selected_datapoints))) > 160) ||...
+                            ((max(hEOG_data(selected_datapoints)) - min(hEOG_data(selected_datapoints))) > 160) % paul, 160(80),120(60),60(30)/luck,200(100),160(80),160(80)
 
-                    if (max(channel_segment(1: length_segment)) - min(channel_segment(1: length_segment))) > 200 ||...
-                            ((max(vEOG_segment(1: length_segment)) - min(vEOG_segment(1: length_segment))) > 160) ||...
-                            ((max(hEOG_segment(1: length_segment)) - min(hEOG_segment(1: length_segment))) > 160) % Paul, 160(80),120(60),60(30)/Luck,200(100),160(80),160(80)
-
-                        segment_ok = 0; % not OK
+                        continue; % skip bad segments - segment_ok = 0; % not OK
                     end
 
-                    % only take the good segments
-                    if segment_ok == 1
-                        electrodes_erp.(['ch_' num2str(electrode)]).([event_type '_num_trials_ok']) = electrodes_erp.(['ch_' num2str(electrode)]).([event_type '_num_trials_ok']) + 1; % count number of segments
-                        tmp_ok_trial_id = electrodes_erp.(['ch_' num2str(electrode)]).([event_type '_num_trials_ok']);
-                        electrodes_erp.(['ch_' num2str(electrode)]).(event_type)(tmp_ok_trial_id, :) = channel_segment - mean(channel_segment(1:baseline_correction_samples));
-                    end 
+                    % only takes good segments
+                    electrodes_erp.(elec_str).(trial_str) = electrodes_erp.(elec_str).(trial_str) + 1; % count number of segments
+                    tmp_ok_trial_id = electrodes_erp.(elec_str).(trial_str);
+                    electrodes_erp.(elec_str).(event_type)(tmp_ok_trial_id, :) = channel_segment - mean(channel_segment(1:baseline_correction_samples));
                 end % end if is_match
             end
         end % for id = 1:size(event_types, 1)
         
     end % for electrodes_to_use
 
-    for electrode = 1:electrodes_to_use
+    for electrode = electrodes_to_use
+        elec_str = ['ch_' num2str(electrode)];
         for id = 1:size(event_types, 1)
             event_type = event_types(id, :);
-            electrodes_erp.(['ch_' num2str(electrode)]).(event_type) = electrodes_erp.(['ch_' num2str(electrode)]).(event_type)(~all(electrodes_erp.(['ch_' num2str(electrode)]).(event_type) == 0, 2),:); % remove rows filled with zeros
+            electrodes_erp.(elec_str).(event_type) = electrodes_erp.(elec_str).(event_type)(~all(electrodes_erp.(elec_str).(event_type) == 0, 2),:); % remove rows filled with zeros
         end
     end
 
