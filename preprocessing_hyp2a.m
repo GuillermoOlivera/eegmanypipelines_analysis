@@ -24,7 +24,7 @@ end
 folder = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision';
 folder_subject_match = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/*.vhdr';
 folder_generated_data = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/_generated_matv7';
-folder_analysed_data = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/_analysed_11';
+folder_analysed_data = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/_analysed_14';
 
 folder_subject_root = fileparts(folder_subject_match); % not used/necessary in linux (!)
 session_filename = 'all_session';
@@ -37,7 +37,7 @@ if (exist(folder_analysed_data, 'file') == 0)
 end
 
 %% Choose subjects and electrodes (channels)
-subjects_to_use = 1:5 % subject_total;
+subjects_to_use = 1:1 % subject_total;
 electrodes_to_use = 1:72;
     
 event_info = struct();
@@ -122,14 +122,11 @@ for subject = subjects_to_use
 
     %% Load previously saved EEG data
     file_name_data = fullfile(folder_generated_data, [subject_root_name '.out.mat']);
-    tic
-    disp(["Loading mat file..." file_name_data])
+    tic; disp(["Loading mat file..." file_name_data])
     load(file_name_data);
-    toc
-    disp("Loaded.")
-    tic
-    disp("Performing analysis...")
+    toc; disp("Loaded.")
 
+    tic; disp(""); disp("Performing analysis...")
     %% EOG correction
     % Data were already re-referenced to channel 30 (POz)
     % Consider if we want to imprement other re-reference: all-channels
@@ -140,70 +137,71 @@ for subject = subjects_to_use
     hEOG_data = apply_filters(loaded_raw_data_from_eeglab.data(72,:), sample_rate_hz, low_pass_upper_limit_hz);
 
     %% create ERP for each condition per electrode
+    electrodes_erp = struct();
     for electrode = electrodes_to_use
-        % Apply filter
-        disp(""); tic
-        data = apply_filters(loaded_raw_data_from_eeglab.data(electrode,:), sample_rate_hz, low_pass_upper_limit_hz);
-        toc
-
-        BB = struct();
         for id = 1:size(event_types, 1)
             event_type = event_types(id, :);
-            BB.(event_type) = zeros(num_trials, length_segment);
+            electrodes_erp.(['ch_' num2str(electrode)]).(event_type) = zeros(size(all_triggers, 1), length_segment);
+            electrodes_erp.(['ch_' num2str(electrode)]).([event_type '_num_trials_ok']) = 0;
         end
+    end
 
-        num_trials_ok = 0; % count variable to record number of segments
+    for electrode = electrodes_to_use
+        % Apply filter
+        data = apply_filters(loaded_raw_data_from_eeglab.data(electrode, :), sample_rate_hz, low_pass_upper_limit_hz);
 
         %% Important part starts here. Here we go through each defined event type (eg. manmade new, natural new, ...)
         for id = 1:size(event_types, 1)
             event_type = event_types(id, :);
-            conditions_to_use = event_info.(event_type).conditions_to_use;
-            
-            for trial = (1:num_trials) % loop through all trials
-                
-                if (check_if_condition_match(conditions_to_use, all_triggers(trial,1)))
-                    stimulus_timepoint = all_triggers(trial,2);
-                    selected_datapoints = stimulus_timepoint - pre_stimulus:stimulus_timepoint + post_stimulus;
+            condition_to_use = event_info.(event_type).conditions_to_use;
+
+            for trigger_id = 1:size(all_triggers, 1)
+                trigger_code = all_triggers(trigger_id);
+                is_match = check_if_condition_match(condition_to_use, trigger_code);
+                if is_match == true
+                    stimulus_datapoint = all_triggers(trigger_id, 2); % vmrk file gives datapoint back! NOT timepoint
+                    selected_datapoints = stimulus_datapoint - pre_stimulus:stimulus_datapoint + post_stimulus;
                     channel_segment = data(selected_datapoints); % original_ not electrode but channel!!
                     vEOG_segment = vEOG_data(selected_datapoints); % get EOG segment
                     hEOG_segment = hEOG_data(selected_datapoints);
-                    
+
                     %% check there is no eye blink or artifact on any of the channels
                     % peak-to-peak voltage vs threshold voltage
                     % peak-to-peak measure less distorted by slow changes in baseline voltage, reducing the impact of source of
                     % misses and false alarms, and increasing the sensitivity of the artifact rejection process (see Luck'book)
                     segment_ok = 1;
-                    
+
                     if (max(channel_segment(1: length_segment)) - min(channel_segment(1: length_segment))) > 200 ||...
                             ((max(vEOG_segment(1: length_segment)) - min(vEOG_segment(1: length_segment))) > 160) ||...
                             ((max(hEOG_segment(1: length_segment)) - min(hEOG_segment(1: length_segment))) > 160) % Paul, 160(80),120(60),60(30)/Luck,200(100),160(80),160(80)
-                        
+
                         segment_ok = 0; % not OK
                     end
-                    
+
                     % only take the good segments
-                    if  segment_ok == 1
-                        num_trials_ok = num_trials_ok + 1; % count number of segments
-                        BB.(event_type)(num_trials_ok, 1:length_segment) = channel_segment - mean(channel_segment(1:baseline_correction_samples));
+                    if segment_ok == 1
+                        electrodes_erp.(['ch_' num2str(electrode)]).([event_type '_num_trials_ok']) = electrodes_erp.(['ch_' num2str(electrode)]).([event_type '_num_trials_ok']) + 1; % count number of segments
+                        tmp_ok_trial_id = electrodes_erp.(['ch_' num2str(electrode)]).([event_type '_num_trials_ok']);
+                        electrodes_erp.(['ch_' num2str(electrode)]).(event_type)(tmp_ok_trial_id, :) = channel_segment - mean(channel_segment(1:baseline_correction_samples));
                     end 
-                end % if (any(all_triggers(trial,1) == conditions_to_use))
-            end % for trial = (1:num_trials) % loop through all trials
+                end % end if is_match
+            end
         end % for id = 1:size(event_types, 1)
         
-        info.num_trials_ok = num_trials_ok;
     end % for electrodes_to_use
 
-    % Save individual results
-    all_segments_erp = struct();
-    for id = 1:size(event_types, 1)
-        event_type = event_types(id, :);
-        all_segments_erp.(event_type).info = info;
-        BB.(event_type) = BB.(event_type)(~all(BB.(event_type) == 0, 2),:); % remove lines filled with zeros
-        all_segments_erp.(event_type).all_electrodes = BB.(event_type);
+    for electrode = 1:electrodes_to_use
+        for id = 1:size(event_types, 1)
+            event_type = event_types(id, :);
+            electrodes_erp.(['ch_' num2str(electrode)]).(event_type) = electrodes_erp.(['ch_' num2str(electrode)]).(event_type)(~all(electrodes_erp.(['ch_' num2str(electrode)]).(event_type) == 0, 2),:); % remove rows filled with zeros
+        end
     end
-    save(subject_analysis_filename, 'all_segments_erp', '-hdf5')
-    disp("Analysis done.")
-    toc
+
+    all_segments_erp = struct();
+    all_segments_erp.info = info;
+    all_segments_erp.all_electrodes = electrodes_erp;
+    save(subject_analysis_filename, 'all_segments_erp', '-v7') % in Octave can also use hdf5 output format '-hdf5'
+    toc; disp("Analysis done.")
 
 end % for subjects_to_use
 
