@@ -148,6 +148,7 @@ for subject = subjects_to_use
             event_type = event_types(id, :);
             trial_str = [event_type '_trials_ok'];
             electrodes_erp.(event_type).(electrode_id_str) = [];
+            info.(trial_str) = zeros(length(electrodes_to_use), 1)';
         end
     end
 
@@ -164,12 +165,11 @@ for subject = subjects_to_use
         for trigger_id = 1:number_of_trials
             trigger = all_triggers_tmp(trigger_id, 1);
             trigger_in_digits = fdec2base(trigger, 10) - '0';
-                
+
             for id = 1:size(event_types, 1)
                 event_type = event_types(id, :);
-                condition_in_digits = event_info.(event_type).condition_to_use_in_digits;
                 trial_str = [event_type '_trials_ok'];
-                info.(trial_str) = 0;
+                condition_in_digits = event_info.(event_type).condition_to_use_in_digits;
 
                 if trigger_in_digits(condition_in_digits~=6) == condition_in_digits(condition_in_digits~=6)
                     stimulus_datapoint = all_triggers_tmp(trigger_id, 2); % vmrk file gives datapoint back! NOT timepoint
@@ -192,14 +192,11 @@ for subject = subjects_to_use
 
                     % only takes good segments
                     if segment_ok == 1
-                        info.(trial_str) = info.(trial_str) + 1; % count number of segments
-                        tmp_ok_trial_id = info.(trial_str);
+                        info.(trial_str)(electrode) = info.(trial_str)(electrode) + 1; % count number of segments
+                        tmp_ok_trial_id = info.(trial_str)(electrode);
                         bias = mean(channel_segment(1:baseline_correction_samples));
                         electrodes_erp.(event_type).(electrode_id_str) = [electrodes_erp.(event_type).(electrode_id_str), (channel_segment - bias)'];
                     end
-
-                    % we found a match for condition, terminate event_type for-loop
-                    break;
 
                 end % end if is_match
                 
