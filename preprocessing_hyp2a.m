@@ -24,7 +24,7 @@ end
 folder = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision';
 folder_subject_match = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/*.vhdr';
 folder_generated_data = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/_generated_matv7';
-folder_analysed_data = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/_analysed_6'; % 5 is bad!
+folder_analysed_data = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/_analysed_full_10'; % 5 is bad!
 
 folder_subject_root = fileparts(folder_subject_match); % not used/necessary in linux (!)
 session_filename = 'all_session';
@@ -37,12 +37,12 @@ if (exist(folder_analysed_data, 'file') == 0)
 end
 
 %% Choose subjects and electrodes (channels)
-subjects_to_use = 1:1; %subject_total;
+subjects_to_use = 1:subject_total;
 electrodes_to_use = 1:72;
     
 event_info = struct();
 event_types = ['manmade_new' ;
-               'manmade_old' ;
+              'manmade_old' ;
                'natural_new' ;
                'natural_old']
 
@@ -147,8 +147,10 @@ for subject = subjects_to_use
         for id = 1:size(event_types, 1)
             event_type = event_types(id, :);
             trial_str = [event_type '_trials_ok'];
+            error_str = [event_type '_error_code'];
             electrodes_erp.(event_type).(electrode_id_str) = [];
-            info.(trial_str) = zeros(length(electrodes_to_use), 1)';
+            info.(trial_str) = zeros(max(electrodes_to_use), 1)';
+            info.(error_str) = zeros(max(electrodes_to_use), 1)';
         end
     end
 
@@ -160,7 +162,7 @@ for subject = subjects_to_use
         data = apply_filters(loaded_raw_data_from_eeglab.data(electrode, :), sample_rate_hz, low_pass_upper_limit_hz);
         all_triggers_tmp = all_triggers;
 
-        toc; tic;
+        % toc; tic;
         %% Important part starts here. Here we go through each defined event type (eg. manmade new, natural new, ...)
         for trigger_id = 1:number_of_trials
             trigger = all_triggers_tmp(trigger_id, 1);
@@ -169,12 +171,13 @@ for subject = subjects_to_use
             for id = 1:size(event_types, 1)
                 event_type = event_types(id, :);
                 trial_str = [event_type '_trials_ok'];
+                error_str = [event_type '_error_code'];
                 condition_in_digits = event_info.(event_type).condition_to_use_in_digits;
 
                 if trigger_in_digits(condition_in_digits~=6) == condition_in_digits(condition_in_digits~=6)
                     stimulus_datapoint = all_triggers_tmp(trigger_id, 2); % vmrk file gives datapoint back! NOT timepoint
                     selected_datapoints = stimulus_datapoint - pre_stimulus:stimulus_datapoint + post_stimulus;
-                    channel_segment = data(selected_datapoints); % original_ not electrode but channel!!
+                    channel_segment = data(selected_datapoints); 
 
                     % disp(['condition=' num2str(condition_to_use) ' trigger_in_digits=' num2str(trigger_in_digits) ' trigger_time=' num2str(stimulus_datapoint)]);
 
@@ -183,17 +186,17 @@ for subject = subjects_to_use
                     % peak-to-peak measure less distorted by slow changes in baseline voltage, reducing the impact of source of
                     % misses and false alarms, and increasing the sensitivity of the artifact rejection process (see Luck'book)
                     segment_ok = 1;
-                    if (max(channel_segment) - min(channel_segment)) > 200 ||...
-                            ((max(vEOG_data(selected_datapoints)) - min(vEOG_data(selected_datapoints))) > 160) ||...
-                            ((max(hEOG_data(selected_datapoints)) - min(hEOG_data(selected_datapoints))) > 160) % paul, 160(80),120(60),60(30)/luck,200(100),160(80),160(80)
-                        % continue; % skip bad segments -> segment_ok = 0; % not OK
-                        segment_ok = 0; % not OK
+                    ch_not_ok = max(channel_segment) - min(channel_segment) > 200;
+                    veog_not_ok = (max(vEOG_data(selected_datapoints)) - min(vEOG_data(selected_datapoints)) > 160);
+                    heog_not_ok = (max(hEOG_data(selected_datapoints)) - min(hEOG_data(selected_datapoints)) > 160); % paul, 160(80),120(60),60(30)/luck,200(100),160(80),160(80)
+                    if ch_not_ok || veog_not_ok || heog_not_ok
+                        info.(error_str)(electrode) = 1*ch_not_ok + 10*veog_not_ok + 100*heog_not_ok;
+                        segment_ok = 0;
                     end
 
                     % only takes good segments
                     if segment_ok == 1
                         info.(trial_str)(electrode) = info.(trial_str)(electrode) + 1; % count number of segments
-                        tmp_ok_trial_id = info.(trial_str)(electrode);
                         bias = mean(channel_segment(1:baseline_correction_samples));
                         electrodes_erp.(event_type).(electrode_id_str) = [electrodes_erp.(event_type).(electrode_id_str), (channel_segment - bias)'];
                     end
@@ -207,29 +210,39 @@ for subject = subjects_to_use
     end % for electrodes_to_use
 
     electrodes_erp.info = info;
-    save(subject_analysis_filename, 'electrodes_erp', '-v7') % in Octave can also use hdf5 output format '-hdf5'
+    save(subject_analysis_filename, 'electrodes_erp', '-hdf5') % in Octave can also use hdf5 output format '-hdf5'
     toc; disp("Analysis done.")
 
 end % for subjects_to_use
 
 
 
-%%%%%  Post processing I - mean for each subjects
-all_segments_erp_summary = struct();
-erp_test_plot_y_1 = [];
-erp_test_plot_y_2 = [];
-erp_test_plot_y_3 = [];
-erp_test_plot_y_4 = [];
-selected_electrodes = [58 59 60 62];
-% selected_electrodes = 1:72;
-subjects_to_use = 1:32;
-for id = 1:size(event_types, 1)
-    event_type = event_types(id, :);
-    electrodes_summary.(event_type) = [];
+%%%%%  Post processing I - mean across subjects
+summary = struct();
+subjects_to_use = 1:33;
+selected_electrodes = 1:72;
+
+subject_summary_filename = fullfile(folder_analysed_data, '_summary.hdf');
+isSummarized = exist(subject_summary_filename, 'file') == 2;
+
+% Memory allocation
+for subject = subjects_to_use
+    if isSummarized continue end
+
+    subject_id_str = ['subj_' num2str(subject)];
+    for electrode = selected_electrodes
+        electrode_id_str = ['ch_' num2str(electrode)];
+        for id = 1:size(event_types, 1)
+            event_type = event_types(id, :);
+            summary.(subject_id_str).(event_type).(electrode_id_str) = [];
+        end
+    end
 end
 
 for subject = subjects_to_use
+    if isSummarized continue end
     disp(subject)
+    subject_id_str = ['subj_' num2str(subject)];
     subject_root_vhdr_name = subject_files(subject, :);
     subject_root_name = erase(subject_root_vhdr_name, '.vhdr');
     if isOctave
@@ -238,26 +251,62 @@ for subject = subjects_to_use
 
     subject_analysis_filename = fullfile(folder_analysed_data, [subject_root_name '_analysed.hdf']);
     load(subject_analysis_filename); % variable name: electrodes_erp
-    channel_summary = struct();
-    for id = 1:size(event_types, 1)
-        event_type = event_types(id, :);
-        erp_matrix = mean(electrodes_erp.(event_type).(num2str(electrode)), 2);
-        if ~isempty(electrodes_summary.(event_type))
-            electrodes_summary.(event_type) = (electrodes_summary.(event_type) + erp_matrix)/2;
-        else
-            electrodes_summary.(event_type) = erp_matrix;
-        end
 
-        %%% all_segments_erp_summary.session.(['subject_' num2str(subject)]).(['channel_' num2str(electrode)]) = channel_summary;
+    for electrode = selected_electrodes
+        electrode_id_str = ['ch_' num2str(electrode)];
+        channel_summary = struct();
+        for id = 1:size(event_types, 1)
+            event_type = event_types(id, :);
+            erp_matrix = mean(electrodes_erp.(event_type).(electrode_id_str), 2);
+
+            if isempty(summary.(subject_id_str).(event_type).(electrode_id_str))
+                summary.(subject_id_str).(event_type).(electrode_id_str) = erp_matrix;
+            end
+
+            summary.(subject_id_str).(event_type).(electrode_id_str) = (summary.(subject_id_str).(event_type).(electrode_id_str) + erp_matrix) / 2;
+        end
     end
 end
-figure; plot(electrodes_summary.manmade_new)
-hold on;
-plot(electrodes_summary.manmade_old)
-plot(electrodes_summary.natural_new)
-plot(electrodes_summary.natural_old)
 
-%%% save(fullfile(folder_analysed_data, [session_filename '.mat']), 'all_segments_erp_summary', '-v7')
+if ~isSummarized
+    save(subject_summary_filename, 'summary', '-hdf5') % in Octave can also use hdf5 output format '-hdf5'
+end
+
+%%
+load(subject_summary_filename);
+for id = 1:size(event_types, 1)
+    event_type = event_types(id, :);
+    subject_erp_mean.(event_type) = [];
+end
+
+erp_matrix = [];
+subjects_to_use = 1:3
+for subject = subjects_to_use
+    subject_id_str = ['subj_' num2str(subject)]
+    for id = 1:size(event_types, 1)
+        event_type = event_types(id, :);
+        erp_cell = struct2cell(summary.(subject_id_str).(event_type));
+        erp_matrix = cell2mat(erp_cell');
+        plot(erp_matrix); hold on;
+
+        if isempty(subject_erp_mean.(event_type))
+            subject_erp_mean.(event_type) = erp_matrix;
+        end
+
+        subject_erp_mean.(event_type) = (subject_erp_mean.(event_type) + erp_matrix) / 2;
+    end
+end
+
+%% Hypothesis checking
+selected_electrodes = [58 59 60 62];
+hyp_1 = mean(subject_erp_mean.manmade_new(:, selected_electrodes), 2);
+hyp_2 = mean(subject_erp_mean.manmade_old(:, selected_electrodes), 2);
+hyp_3 = mean(subject_erp_mean.natural_new(:, selected_electrodes), 2);
+hyp_4 = mean(subject_erp_mean.natural_old(:, selected_electrodes), 2);
+% plot(hyp_1)
+% plot(hyp_2)
+% plot(hyp_3)
+% plot(hyp_4)
  
  
  
@@ -266,7 +315,7 @@ plot(electrodes_summary.natural_old)
 %%% tic
 %%% for id = 1:size(event_types, 1)
 %%%     event_type = event_types(id, :);
-%%%     add_to_summary(event_type, session_filename, post_session_filename, folder_analysed_data, electrodes_to_use);
+%%%     add_to_summary(event_type, session_filename, post_session_filename, folder_analysed_data, selected_electrodes);
 %%% end
 %%% toc
 
@@ -291,7 +340,7 @@ plot(electrodes_summary.natural_old)
 %%%     subject_analysis_filename = fullfile(folder_analysed_data, [subject_root_name '_analysed.hdf']);
 %%%     load(subject_analysis_filename) % variable name: all_segments_erp
 %%%     disp(subject)
-%%%     for electrode = electrodes_to_use
+%%%     for electrode = selected_electrodes
 %%%         channel_spectral_power_density = struct();
 %%%         for id = 1:size(event_types, 1)
 %%%             event_type = event_types(id, :);

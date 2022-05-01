@@ -48,3 +48,9 @@ Requirements [6/11]:
 * Questions
 
 - What/where are fronto-central channels? How many? -> [[file:/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/channel_locations/chanlocs_besa.txt][manypipelines channel locations]]
+
+  
+* <2022-04-27 Wed> log
+
+- Check channel 59, manmade old
+ [[file:images/2022-04-27_18-02.png][See screenshot here]] 
