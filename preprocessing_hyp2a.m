@@ -52,6 +52,10 @@ condition_values = [1066;
                     2066
                     2166];
 
+%% For Hypothesis 3
+% condition_values = [1066;
+%                     2166];
+
 for id = 1:size(event_types, 1)
     event_type = event_types(id, :);
     event_info.(event_type).condition_to_use = condition_values(id);
@@ -222,7 +226,7 @@ summary = struct();
 subjects_to_use = 1:33;
 selected_electrodes = 1:72;
 
-subject_summary_filename = fullfile(folder_analysed_data, '_summary.hdf');
+subject_summary_filename = fullfile(folder_analysed_data, 'summary.hdf');
 isSummarized = exist(subject_summary_filename, 'file') == 2;
 
 % Memory allocation
@@ -252,6 +256,7 @@ for subject = subjects_to_use
     subject_analysis_filename = fullfile(folder_analysed_data, [subject_root_name '_analysed.hdf']);
     load(subject_analysis_filename); % variable name: electrodes_erp
 
+    total_electrodes = 1;
     for electrode = selected_electrodes
         electrode_id_str = ['ch_' num2str(electrode)];
         channel_summary = struct();
@@ -263,9 +268,19 @@ for subject = subjects_to_use
                 summary.(subject_id_str).(event_type).(electrode_id_str) = erp_matrix;
             end
 
-            summary.(subject_id_str).(event_type).(electrode_id_str) = (summary.(subject_id_str).(event_type).(electrode_id_str) + erp_matrix) / 2;
+            summary.(subject_id_str).(event_type).(electrode_id_str) = summary.(subject_id_str).(event_type).(electrode_id_str) + erp_matrix;
+            total_electrodes = total_electrodes + 1;
         end
     end
+
+    for electrode = selected_electrodes
+        electrode_id_str = ['ch_' num2str(electrode)];
+        for id = 1:size(event_types, 1)
+            event_type = event_types(id, :);
+            summary.(subject_id_str).(event_type).(electrode_id_str) / total_electrodes;
+        end
+    end
+
 end
 
 if ~isSummarized
@@ -280,21 +295,31 @@ for id = 1:size(event_types, 1)
 end
 
 erp_matrix = [];
-subjects_to_use = 1:3
+leg = {};
+subjects_to_use = 1:33
+total_subjects = 1;
 for subject = subjects_to_use
     subject_id_str = ['subj_' num2str(subject)]
     for id = 1:size(event_types, 1)
         event_type = event_types(id, :);
         erp_cell = struct2cell(summary.(subject_id_str).(event_type));
         erp_matrix = cell2mat(erp_cell');
-        plot(erp_matrix); hold on;
 
         if isempty(subject_erp_mean.(event_type))
             subject_erp_mean.(event_type) = erp_matrix;
         end
 
-        subject_erp_mean.(event_type) = (subject_erp_mean.(event_type) + erp_matrix) / 2;
+        subject_erp_mean.(event_type) = (subject_erp_mean.(event_type) + erp_matrix);
+        total_subjects = total_subjects + 1;
     end
+    % plot(mean(subject_erp_mean.(event_type)(:, [58 59]), 2), 'LineWidth', 4); hold on;
+    % leg{end+1} = num2str(subject)
+    % legend(leg, 'FontSize', 14);
+end
+
+for id = 1:size(event_types, 1)
+    event_type = event_types(id, :);
+    subject_erp_mean.(event_type) / total_subjects;
 end
 
 %% Hypothesis checking
@@ -303,10 +328,12 @@ hyp_1 = mean(subject_erp_mean.manmade_new(:, selected_electrodes), 2);
 hyp_2 = mean(subject_erp_mean.manmade_old(:, selected_electrodes), 2);
 hyp_3 = mean(subject_erp_mean.natural_new(:, selected_electrodes), 2);
 hyp_4 = mean(subject_erp_mean.natural_old(:, selected_electrodes), 2);
-% plot(hyp_1)
-% plot(hyp_2)
-% plot(hyp_3)
-% plot(hyp_4)
+figure; plot(1/512*(1:length(hyp_1)), hyp_1, 'LineWidth', 4)
+hold on
+plot(1/512*(1:length(hyp_1)), hyp_2, 'LineWidth', 4)
+plot(1/512*(1:length(hyp_1)), hyp_3, 'LineWidth', 4)
+plot(1/512*(1:length(hyp_1)), hyp_4, 'LineWidth', 4)
+legend('manmade new', 'manmade old', 'natural new', 'natural old');
  
  
  
