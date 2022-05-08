@@ -221,7 +221,7 @@ end % for subjects_to_use
 
 
 
-%%%%%  Post processing I - mean across subjects
+%%%%%  Post processing I - calculate mean of all trials per subject, electrode and event
 summary = struct();
 subjects_to_use = 1:33;
 selected_electrodes = 1:72;
@@ -229,9 +229,16 @@ selected_electrodes = 1:72;
 subject_summary_filename = fullfile(folder_analysed_data, 'summary.hdf');
 isSummarized = exist(subject_summary_filename, 'file') == 2;
 
+if isSummarized
+    disp("Skipping processing -> calculate mean of all trials per subject, electrode and event");
+end
+
 % Memory allocation
 for subject = subjects_to_use
-    if isSummarized continue end
+    % skip if we have already the summary file
+    if isSummarized
+        continue
+    end
 
     subject_id_str = ['subj_' num2str(subject)];
     for electrode = selected_electrodes
@@ -244,8 +251,12 @@ for subject = subjects_to_use
 end
 
 for subject = subjects_to_use
-    if isSummarized continue end
-    disp(subject)
+    % skip if we have already the summary file
+    if isSummarized
+        continue
+    end
+
+    disp(["Summarizing subject: " num2str(subject)]);
     subject_id_str = ['subj_' num2str(subject)];
     subject_root_vhdr_name = subject_files(subject, :);
     subject_root_name = erase(subject_root_vhdr_name, '.vhdr');
@@ -287,7 +298,9 @@ if ~isSummarized
     save(subject_summary_filename, 'summary', '-hdf5') % in Octave can also use hdf5 output format '-hdf5'
 end
 
-%%
+%% Mean across subjects
+% Here is make mean across all subjects and plot the results. We don't
+% save these results as they are calculated very fast
 load(subject_summary_filename);
 for id = 1:size(event_types, 1)
     event_type = event_types(id, :);
@@ -299,7 +312,7 @@ leg = {};
 subjects_to_use = 1:33
 total_subjects = 1;
 for subject = subjects_to_use
-    subject_id_str = ['subj_' num2str(subject)]
+    subject_id_str = ['subj_' num2str(subject)];
     for id = 1:size(event_types, 1)
         event_type = event_types(id, :);
         erp_cell = struct2cell(summary.(subject_id_str).(event_type));
@@ -312,9 +325,6 @@ for subject = subjects_to_use
         subject_erp_mean.(event_type) = (subject_erp_mean.(event_type) + erp_matrix);
         total_subjects = total_subjects + 1;
     end
-    % plot(mean(subject_erp_mean.(event_type)(:, [58 59]), 2), 'LineWidth', 4); hold on;
-    % leg{end+1} = num2str(subject)
-    % legend(leg, 'FontSize', 14);
 end
 
 for id = 1:size(event_types, 1)
@@ -324,15 +334,17 @@ end
 
 %% Hypothesis checking
 selected_electrodes = [58 59 60 62];
+% selected_electrodes = fronto_central_channels;
 hyp_1 = mean(subject_erp_mean.manmade_new(:, selected_electrodes), 2);
 hyp_2 = mean(subject_erp_mean.manmade_old(:, selected_electrodes), 2);
 hyp_3 = mean(subject_erp_mean.natural_new(:, selected_electrodes), 2);
 hyp_4 = mean(subject_erp_mean.natural_old(:, selected_electrodes), 2);
-figure; plot(1/512*(1:length(hyp_1)), hyp_1, 'LineWidth', 4)
+time_vector = 1/512*(1:length(hyp_1)) - pre_stimulus_ms / 1000;
+figure; plot(time_vector, hyp_1, 'LineWidth', 4)
 hold on
-plot(1/512*(1:length(hyp_1)), hyp_2, 'LineWidth', 4)
-plot(1/512*(1:length(hyp_1)), hyp_3, 'LineWidth', 4)
-plot(1/512*(1:length(hyp_1)), hyp_4, 'LineWidth', 4)
+plot(time_vector, hyp_2, 'LineWidth', 4)
+plot(time_vector, hyp_3, 'LineWidth', 4)
+plot(time_vector, hyp_4, 'LineWidth', 4)
 legend('manmade new', 'manmade old', 'natural new', 'natural old');
  
  
