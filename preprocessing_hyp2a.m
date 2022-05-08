@@ -16,15 +16,17 @@ end
 % eeglab;
 
 %% Hardcoded folder and file paths
-% folder = 'G:\_EEGManyPipelines\EMP_data\eeg_brainvision\';
-% folder_generated_data = 'G:\_EEGManyPipelines\EMP_data\eeg_brainvision\_generated';
-% folder_analysed_data = 'G:\_EEGManyPipelines\EMP_data\eeg_brainvision\_analysis_hy2a_6';
-% folder_subject_match = 'G:\_EEGManyPipelines\EMP_data\eeg_brainvision\*.vhdr';
-
-folder = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision';
-folder_subject_match = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/*.vhdr';
-folder_generated_data = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/_generated_matv7';
-folder_analysed_data = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/_analysed_full_10'; % 5 is bad!
+if isOctave
+    folder = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision';
+    folder_subject_match = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/*.vhdr';
+    folder_generated_data = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/_generated_matv7';
+    folder_analysed_data = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/_analysed_full_10'; % 5 is bad!
+else
+    folder = 'W:\EMP_data\EMP_data\eeg_brainvision\';
+    folder_subject_match = 'W:\EMP_data\EMP_data\eeg_brainvision\*.vhdr';
+    folder_generated_data = 'W:\EMP_data\EMP_data\eeg_brainvision\_generated_matv7';
+    folder_analysed_data = 'W:\EMP_data\EMP_data\eeg_brainvision\_analysed_full_10';
+end
 
 folder_subject_root = fileparts(folder_subject_match); % not used/necessary in linux (!)
 session_filename = 'all_session';
@@ -46,7 +48,7 @@ event_types = ['manmade_new' ;
                'natural_new' ;
                'natural_old']
 
-% Use the digit "6" to ignore code position
+% Use the digit '6' to ignore code position
 condition_values = [1066;
                     1166;
                     2066
@@ -128,11 +130,11 @@ for subject = subjects_to_use
 
     %% Load previously saved EEG data
     file_name_data = fullfile(folder_generated_data, [subject_root_name '.out.mat']);
-    tic; disp(["Loading mat file..." file_name_data])
+    tic; disp(['Loading mat file...' file_name_data])
     load(file_name_data);
-    toc; disp("Loaded.")
+    toc; disp('Loaded.')
 
-    tic; disp(""); disp("Performing analysis...")
+    tic; disp(''); disp('Performing analysis...')
     %% EOG correction
     % Data were already re-referenced to channel 30 (POz)
     % Consider if we want to imprement other re-reference: all-channels
@@ -215,7 +217,7 @@ for subject = subjects_to_use
 
     electrodes_erp.info = info;
     save(subject_analysis_filename, 'electrodes_erp', '-hdf5') % in Octave can also use hdf5 output format '-hdf5'
-    toc; disp("Analysis done.")
+    toc; disp('Analysis done.')
 
 end % for subjects_to_use
 
@@ -230,7 +232,7 @@ subject_summary_filename = fullfile(folder_analysed_data, 'summary.hdf');
 isSummarized = exist(subject_summary_filename, 'file') == 2;
 
 if isSummarized
-    disp("Skipping processing -> calculate mean of all trials per subject, electrode and event");
+    disp('Skipping processing -> calculate mean of all trials per subject, electrode and event');
 end
 
 % Memory allocation
@@ -256,7 +258,7 @@ for subject = subjects_to_use
         continue
     end
 
-    disp(["Summarizing subject: " num2str(subject)]);
+    disp(['Summarizing subject: ' num2str(subject)]);
     subject_id_str = ['subj_' num2str(subject)];
     subject_root_vhdr_name = subject_files(subject, :);
     subject_root_name = erase(subject_root_vhdr_name, '.vhdr');
@@ -363,7 +365,7 @@ legend('manmade new', 'manmade old', 'natural new', 'natural old');
 %% Post processing III - do welch power spectral analysis
 
 %%% tic
-%%% disp("Start spectral analysis...")
+%%% disp('Start spectral analysis...')
 %%% 
 %%% Legend=cell(2,1)%  two positions 
 %%% iter = 1;
