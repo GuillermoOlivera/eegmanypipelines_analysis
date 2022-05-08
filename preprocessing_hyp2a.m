@@ -20,12 +20,12 @@ if isOctave
     folder = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision';
     folder_subject_match = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/*.vhdr';
     folder_generated_data = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/_generated_matv7';
-    folder_analysed_data = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/_analysed_full_10'; % 5 is bad!
+    folder_analysed_data = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/_analysed_matlab_full_10'; 
 else
     folder = 'W:\EMP_data\EMP_data\eeg_brainvision\';
     folder_subject_match = 'W:\EMP_data\EMP_data\eeg_brainvision\*.vhdr';
     folder_generated_data = 'W:\EMP_data\EMP_data\eeg_brainvision\_generated_matv7';
-    folder_analysed_data = 'W:\EMP_data\EMP_data\eeg_brainvision\_analysed_full_10';
+    folder_analysed_data = 'W:\EMP_data\EMP_data\eeg_brainvision\_analysed_matlab_full_10';
 end
 
 folder_subject_root = fileparts(folder_subject_match); % not used/necessary in linux (!)
@@ -216,7 +216,7 @@ for subject = subjects_to_use
     end % for electrodes_to_use
 
     electrodes_erp.info = info;
-    save(subject_analysis_filename, 'electrodes_erp', '-hdf5') % in Octave can also use hdf5 output format '-hdf5'
+    save(subject_analysis_filename, 'electrodes_erp', '-mat7-binary') % in Octave can also use hdf5 output format '-hdf5'
     toc; disp('Analysis done.')
 
 end % for subjects_to_use
@@ -297,13 +297,13 @@ for subject = subjects_to_use
 end
 
 if ~isSummarized
-    save(subject_summary_filename, 'summary', '-hdf5') % in Octave can also use hdf5 output format '-hdf5'
+    save(subject_summary_filename, 'summary', '-mat7-binary') % in Octave can also use hdf5 output format '-hdf5'
 end
 
 %% Mean across subjects
 % Here is make mean across all subjects and plot the results. We don't
 % save these results as they are calculated very fast
-load(subject_summary_filename);
+load(subject_summary_filename, '-mat');
 for id = 1:size(event_types, 1)
     event_type = event_types(id, :);
     subject_erp_mean.(event_type) = [];
@@ -311,7 +311,7 @@ end
 
 erp_matrix = [];
 leg = {};
-subjects_to_use = 1:33
+subjects_to_use = 1:33;
 total_subjects = 1;
 for subject = subjects_to_use
     subject_id_str = ['subj_' num2str(subject)];
