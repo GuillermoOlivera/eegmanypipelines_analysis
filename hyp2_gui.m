@@ -338,7 +338,7 @@ end
 
 for id = 1:size(event_types, 1)
     event_type = event_types(id, :);
-    subject_erp_mean.(event_type) / total_subjects;
+    subject_erp_mean.(event_type) = subject_erp_mean.(event_type) / total_subjects;
 end
 
 %% Hypothesis checking

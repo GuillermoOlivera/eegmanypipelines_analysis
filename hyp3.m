@@ -20,12 +20,12 @@ if isOctave
     folder = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision';
     folder_subject_match = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/*.vhdr';
     folder_generated_data = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/_generated_matv7';
-    folder_analysed_data = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/_analysed_hyp3ab'; 
+    folder_analysed_data = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/_analysed_hyp3'; 
 else
     folder = 'w:\EMP_data\EMP_data\eeg_brainvision\';
     folder_subject_match = 'w:\EMP_data\EMP_data\eeg_brainvision\*.vhdr';
     folder_generated_data = 'w:\EMP_data\EMP_data\eeg_brainvision\_generated_matv7';
-    folder_analysed_data = 'w:\EMP_data\EMP_data\eeg_brainvision\_analysed_hyp3ab';
+    folder_analysed_data = 'w:\EMP_data\EMP_data\eeg_brainvision\_analysed_hyp3';
 end
 
 folder_subject_root = fileparts(folder_subject_match); % not used/necessary in linux (!)
@@ -43,10 +43,10 @@ subjects_to_use = 1:subject_total;
 electrodes_to_use = 1:72;
     
 event_info = struct();
-event_types = ['manmade_old_hit' ;
+event_types = {'manmade_old_hit' ;
                'manmade_old_miss' ;
                'natural_old_hit' ;
-               'natural_old_miss']
+               'natural_old_miss'}
 
 % Use the digit '6' to ignore code position
 condition_values = [1116;
@@ -55,7 +55,7 @@ condition_values = [1116;
                     2126];
 
 for id = 1:size(event_types, 1)
-    event_type = event_types(id, :);
+    event_type = event_types{id};
     event_info.(event_type).condition_to_use = condition_values(id);
     event_info.(event_type).condition_to_use_in_digits = fdec2base(condition_values(id), 10) - '0';
 end
@@ -143,7 +143,7 @@ for subject = subjects_to_use
     for electrode = electrodes_to_use
         electrode_id_str = ['ch_' num2str(electrode)];
         for id = 1:size(event_types, 1)
-            event_type = event_types(id, :);
+            event_type = event_types{id};
             trial_str = [event_type '_trials_ok'];
             error_str = [event_type '_error_code'];
             electrodes_erp.(event_type).(electrode_id_str) = [];
@@ -172,7 +172,7 @@ for subject = subjects_to_use
             trigger_in_digits = fdec2base(trigger, 10) - '0';
 
             for id = 1:size(event_types, 1)
-                event_type = event_types(id, :);
+                event_type = event_types{id};
                 trial_str = [event_type '_trials_ok'];
                 error_str = [event_type '_error_code'];
                 condition_in_digits = event_info.(event_type).condition_to_use_in_digits;
@@ -221,99 +221,31 @@ end % for subjects_to_use
 
 
 %%%%%  Post processing I - calculate mean of all trials per subject, electrode and event
-summary = struct();
 subjects_to_use = 1:33;
 selected_electrodes = 1:72;
+postprocess_step1(folder_analysed_data, subjects_to_use, selected_electrodes, event_types, subject_files);
 
-subject_summary_filename = fullfile(folder_analysed_data, 'summary.hdf');
-isSummarized = exist(subject_summary_filename, 'file') == 2;
-
-if isSummarized
-    disp('Skipping processing -> calculate mean of all trials per subject, electrode and event');
-end
-
-% Memory allocation
-for subject = subjects_to_use
-    % skip if we have already the summary file
-    if isSummarized
-        continue
-    end
-
-    subject_id_str = ['subj_' num2str(subject)];
-    for electrode = selected_electrodes
-        electrode_id_str = ['ch_' num2str(electrode)];
-        for id = 1:size(event_types, 1)
-            event_type = event_types(id, :);
-            summary.(subject_id_str).(event_type).(electrode_id_str) = [];
-        end
-    end
-end
-
-for subject = subjects_to_use
-    % skip if we have already the summary file
-    if isSummarized
-        continue
-    end
-
-    disp(['Summarizing subject: ' num2str(subject)]);
-    subject_id_str = ['subj_' num2str(subject)];
-    subject_root_vhdr_name = subject_files(subject, :);
-    subject_root_name = erase(subject_root_vhdr_name, '.vhdr');
-    if isOctave
-        [dir, subject_root_name, ext] = fileparts(subject_root_name);
-    end
-
-    subject_analysis_filename = fullfile(folder_analysed_data, [subject_root_name '_analysed.hdf']);
-    load(subject_analysis_filename); % variable name: electrodes_erp
-
-    total_electrodes = 1;
-    for electrode = selected_electrodes
-        electrode_id_str = ['ch_' num2str(electrode)];
-        channel_summary = struct();
-        for id = 1:size(event_types, 1)
-            event_type = event_types(id, :);
-            erp_matrix = mean(electrodes_erp.(event_type).(electrode_id_str), 2);
-
-            if isempty(summary.(subject_id_str).(event_type).(electrode_id_str))
-                summary.(subject_id_str).(event_type).(electrode_id_str) = erp_matrix;
-            end
-
-            summary.(subject_id_str).(event_type).(electrode_id_str) = summary.(subject_id_str).(event_type).(electrode_id_str) + erp_matrix;
-            total_electrodes = total_electrodes + 1;
-        end
-    end
-
-    for electrode = selected_electrodes
-        electrode_id_str = ['ch_' num2str(electrode)];
-        for id = 1:size(event_types, 1)
-            event_type = event_types(id, :);
-            summary.(subject_id_str).(event_type).(electrode_id_str) / total_electrodes;
-        end
-    end
-
-end
-
-if ~isSummarized
-    save(subject_summary_filename, 'summary', '-mat7-binary') % in Octave can also use hdf5 output format '-hdf5'
-end
-
-%% Mean across subjects
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Testing - mean across subjects
 % Here is make mean across all subjects and plot the results. We don't
 % save these results as they are calculated very fast
-load(subject_summary_filename, '-mat');
+load(subject_summary_filename, '-mat'); % variable: summary
+
 for id = 1:size(event_types, 1)
-    event_type = event_types(id, :);
+    event_type = event_types{id};
     subject_erp_mean.(event_type) = [];
 end
 
 erp_matrix = [];
 leg = {};
 subjects_to_use = 1:33;
-total_subjects = 1;
+total_subjects = 0;
 for subject = subjects_to_use
     subject_id_str = ['subj_' num2str(subject)];
     for id = 1:size(event_types, 1)
-        event_type = event_types(id, :);
+        event_type = event_types{id};
         erp_cell = struct2cell(summary.(subject_id_str).(event_type));
         erp_matrix = cell2mat(erp_cell');
 
@@ -322,93 +254,135 @@ for subject = subjects_to_use
         end
 
         subject_erp_mean.(event_type) = (subject_erp_mean.(event_type) + erp_matrix);
-        total_subjects = total_subjects + 1;
     end
+
+    total_subjects = total_subjects + 1;
 end
 
 for id = 1:size(event_types, 1)
-    event_type = event_types(id, :);
-    subject_erp_mean.(event_type) / total_subjects;
+    event_type = event_types{id};
+    subject_erp_mean.(event_type) = subject_erp_mean.(event_type) / total_subjects;
 end
 
 %% Hypothesis checking
-selected_electrodes = [58 59 60 62];
-% selected_electrodes = fronto_central_channels;
-cond_1 = mean(subject_erp_mean.manmade_old_hit(:, selected_electrodes), 2);
-cond_2 = mean(subject_erp_mean.manmade_old_miss(:, selected_electrodes), 2);
-cond_3 = mean(subject_erp_mean.natural_old_hit(:, selected_electrodes), 2);
-cond_4 = mean(subject_erp_mean.natural_old_miss(:, selected_electrodes), 2);
-time_vector = 1/512*(1:length(cond_1)) - pre_stimulus_ms / 1000;
-figure; plot(time_vector, cond_1, 'LineWidth', 4)
-hold on
-plot(time_vector, cond_2, 'LineWidth', 4)
-plot(time_vector, cond_3, 'LineWidth', 4)
-plot(time_vector, cond_4, 'LineWidth', 4)
-% legend('manmade new', 'manmade old', 'natural new', 'natural old');
+run_test = false;
+if (run_test)
+    selected_electrodes = [58 59 60 62];
+    % selected_electrodes = fronto_central_channels;
+    hyp_1 = mean(subject_erp_mean.manmade_new(:, selected_electrodes), 2);
+    hyp_2 = mean(subject_erp_mean.manmade_old(:, selected_electrodes), 2);
+    hyp_3 = mean(subject_erp_mean.natural_new(:, selected_electrodes), 2);
+    hyp_4 = mean(subject_erp_mean.natural_old(:, selected_electrodes), 2);
+    time_vector = 1/512*(1:length(hyp_1)) - pre_stimulus_ms / 1000;
+    figure; plot(time_vector, hyp_1, 'LineWidth', 4)
+    hold on
+    plot(time_vector, hyp_2, 'LineWidth', 4)
+    plot(time_vector, hyp_3, 'LineWidth', 4)
+    plot(time_vector, hyp_4, 'LineWidth', 4)
+    legend('manmade new', 'manmade old', 'natural new', 'natural old');
+end
  
+
+if true
+    disp("Finished hyp3")
+    return;
+end
+
  
- 
-%%%%%  Post processing II - mean for all subjects
-%%%%  all_segments_erp_summary actually not needed because we load it either way
-%%% tic
-%%% for id = 1:size(event_types, 1)
-%%%     event_type = event_types(id, :);
-%%%     add_to_summary(event_type, session_filename, post_session_filename, folder_analysed_data, selected_electrodes);
-%%% end
-%%% toc
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Testing - FFT power spectral analysis
 
+for id = 1:size(event_types, 1)
+    event_type = event_types{id};
+    subject_erp_mean.(event_type) = [];
+end
 
+tic
+disp('Start spectral analysis...')
+erp_matrix = [];
+leg = {};
+total_subjects = 0;
+subjects_to_use = 1:33
+for subject = subjects_to_use
+    subject_id_str = ['subj_' num2str(subject)];
+    subject_id_str_for_plot = ['subj\_' num2str(subject)];
+    for id = 1:size(event_types, 1)
+        event_type = event_types{id};
+        erp_cell = struct2cell(summary.(subject_id_str).(event_type));
+        erp_matrix = cell2mat(erp_cell');
+        if isempty(subject_erp_mean.(event_type))
+            subject_erp_mean.(event_type) = erp_matrix;
+        end
 
-%% Post processing III - do welch power spectral analysis
+        subject_erp_mean.(event_type) = (subject_erp_mean.(event_type) + erp_matrix);
+    end
+    total_subjects = total_subjects + 1;
+end
 
-%%% tic
-%%% disp('Start spectral analysis...')
-%%% 
-%%% Legend=cell(2,1)%  two positions 
-%%% iter = 1;
-%%% erp_segment_test = [];
-%%% erp_segment_test2 = [];
-%%% for subject = subjects_to_use
-%%%     subject_root_vhdr_name = subject_files(subject, :);
-%%%     subject_root_name = erase(subject_root_vhdr_name, '.vhdr');
-%%%     if isOctave
-%%%         [dir, subject_root_name, ext] = fileparts(subject_root_name);
-%%%     end
-%%% 
-%%%     subject_analysis_filename = fullfile(folder_analysed_data, [subject_root_name '_analysed.hdf']);
-%%%     load(subject_analysis_filename) % variable name: all_segments_erp
-%%%     disp(subject)
-%%%     for electrode = selected_electrodes
-%%%         channel_spectral_power_density = struct();
-%%%         for id = 1:size(event_types, 1)
-%%%             event_type = event_types(id, :);
-%%%             electrode_id_str = ['ch_' num2str(electrode)];
-%%%             erp_segments_matrix = all_segments_erp.all_electrodes.(electrode_id_str).(event_type);
-%%% 
-%%%             num_trials_in_event = size(erp_segments_matrix, 1);
-%%% 
-%%%             %%-----------------
-%%%             if id == 2 && electrode == 11
-%%%                 % window = 0.6 * sample_rate_hz; % 600ms
-%%%                 data = mean(erp_segments_matrix);
-%%%                 [spectra, Pxx_ci, freq] = pwelch(data, [], [], [], sample_rate_hz);
-%%%                 keyboard()
-%%%                 % erp_segment = mean(erp_segments_matrix);
-%%%                 erp_segment_test = [erp_segment_test; Pxx_ci];
-%%%                 erp_segment_test2 = [erp_segment_test2; freq];
-%%%             end
-%%%             % low, high = 0.5, 4 % alpha limits
-%%%             %%-----------------
-%%% 
-%%%             % channel_spectral_power_density.(event_type).alpha_power = pwelch_alpha;
-%%%             % channel_spectral_power_density.(event_type).beta_power = pwelch_beta;
-%%% 
-%%%         end
-%%% 
-%%%         % all_segments_erp_summary.session.(['subject_' num2str(subject)]).(['channel_' num2str(electrode)]) = channel_summary;
-%%%     end
-%%% end
-%%% plot(mean(erp_segment_test)', mean(erp_segment_test2)');
+for id = 1:size(event_types, 1)
+    event_type = event_types{id};
+    subject_erp_mean.(event_type) = subject_erp_mean.(event_type) / total_subjects;
+end
+
+% Just for plotting
+plot_all = false;
+if (plot_all)
+    for subject = subjects_to_use
+        legevent = {};
+        hFigure = figure;
+        subject_id_str = ['subj_' num2str(subject)];
+        % axes('Position', [0 0 1 1])
+        for id = 1:size(event_types, 1)
+            event_type = event_types{id};
+            erp_cell = struct2cell(summary.(subject_id_str).(event_type));
+            erp_matrix = cell2mat(erp_cell');
+            time = (1:length(erp_matrix))/512;
+            plot(time*1000, mean(erp_matrix, 2))
+            hold on;
+            set(hFigure, 'MenuBar', 'none');
+            set(hFigure, 'ToolBar', 'none');
+            legevent(end+1) = event_type;
+        end
+        xlabel(["time [ms]"]);
+        title(subject_id_str);
+        legend(legevent);
+        ylim([-0.05 0.1])
+    end
+end
+
+%%-----------------
+% figure; pwelch(data, [], [], [], Fs);
+leg = {};
+for id = 1:size(event_types, 1)
+    event_type = event_types{id};
+    data = mean(subject_erp_mean.(event_type)(:, [58 59 60 61]), 2);
+    Fs = 512;            % Sampling frequency                    
+    dT = 1/Fs;           % Sampling period       
+    L = length(data);    % Length of signal
+    t = (0:L-1)*dT;      % Time vector
+    Y = fft(data);
+    P2 = abs(Y/L);
+    P1 = P2(1:L/2+1);
+    P1(2:end-1) = 2*P1(2:end-1);
+    f = Fs*(0:(L/2))/L;
+
+    plot(f,P1); hold on;
+    leg(end+1) = event_type;
+end
+
+legend(leg);
+xlim([0 20]);
+title('Single-Sided Amplitude Spectrum of S(t)')
+xlabel('f (Hz)')
+ylabel('|P1(f)|')
+
+% low, high = 0.5, 4 % alpha limits
+%%-----------------
+
+        % channel_spectral_power_density.(event_type).alpha_power = pwelch_alpha;
+        % channel_spectral_power_density.(event_type).beta_power = pwelch_beta;
 % Legend{iter}=strcat('Electrode', num2str(electrode));
 % iter = iter + 1;
 % legend(Legend);
