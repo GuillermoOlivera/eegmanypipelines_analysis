@@ -34,8 +34,13 @@ hypothesis_data.baseline_correction_time_ms = 250;
 
 fronto_central_channels = [9, 10, 11, 44, 45, 46, 47];
 
+
+
+
+
+
 %% Folder and file paths
-use_reref = false;
+use_reref = true;
 if use_reref; reref = 'reref_'; else; reref = ''; end;
 
 if isOctave
@@ -62,14 +67,14 @@ electrodes_to_use = 1:64% fronto_central_channels;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%  Processing I - Extract all ERPs based on events
-process_step1(hypothesis_data, folder_analysed_data, folder_subject_root, subject_files, subjects_to_use, folder_generated_data, electrodes_to_use, use_reref)
+process(hypothesis_data, folder_analysed_data, folder_subject_root, subject_files, subjects_to_use, folder_generated_data, electrodes_to_use, use_reref)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%  Post processing - calculate mean of all trials; per subject, electrode and event
 
 % subjects_to_use = subjects_to_use;
 % selected_electrodes = electrodes_to_use;
-% subject_summary_filename = postprocess_step1(folder_analysed_data, subjects_to_use, selected_electrodes, hypothesis_data.event_types, subject_files);
+% subject_summary_filename = postprocess(folder_analysed_data, subjects_to_use, selected_electrodes, hypothesis_data.event_types, subject_files);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%  Post processing - spectral analysis, high resolution
