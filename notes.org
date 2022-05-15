@@ -54,3 +54,17 @@ Requirements [6/11]:
 
 - Check channel 59, manmade old
  [[file:images/2022-04-27_18-02.png][See screenshot here]] 
+
+ 
+* <2022-05-13 Fri> log
+
+%% Channel position for hypothesis 2 - NOT USED YET
+% Frontal central channels
+%     9->FC5
+%     10->FC3
+%     11->FC1
+%     44->FC6
+%     45->FC4
+%     46->FC2
+%     47->FCz
+fronto_central_channels = [9, 10, 11, 44, 45, 46, 47];

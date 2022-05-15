@@ -1,12 +1,12 @@
-function filtered_data = apply_filters(input_data, sample_rate_hz, high_cutoff_freq)
+function filtered_data = apply_filters(input_data, sample_rate_hz, high_cutoff_freq, high_pass_lower_limit_hz)
 
 isOctave = exist('OCTAVE_VERSION', 'builtin') ~= 0;
 
 input_data_as_double = double(input_data);
 
 % high pass
-low_cutoff_freq = 0.1; % use 1hz for ICA pre-proces (good results in terms of SNR, better decomposition)
-% 1hz too high for ERP analysis? check Luck - ICA / use 0.1 according to Luck and Zakeri
+low_cutoff_freq = high_pass_lower_limit_hz; % use 1hz for ICA pre-proces (good results in terms of SNR, better decomposition)
+% 1 hz too high for ERP analysis? check Luck - ICA / use 0.1 according to Luck and Zakeri
 % ("Influence of signal pre-proc on ICA-based EEG decomposition)insted of 0.01 (original version) and 1.
 filter_order = 2; % use 2nd order (= 12 dB/octave, Luck)
 [b, a] = butter(filter_order,low_cutoff_freq /(sample_rate_hz / 2),'high'); % high pass digital filter design

@@ -16,11 +16,14 @@ end
 % eeglab;
 
 %% Hardcoded folder and file paths
+use_reref = false;
+if use_reref; reref = 'reref_'; else; reref = ''; end;
+
 if isOctave
     folder = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision';
     folder_subject_match = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/*.vhdr';
     folder_generated_data = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/_generated_matv7';
-    folder_analysed_data = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/_analysed_hyp3'; 
+    folder_analysed_data = ['/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/_analysed_' reref 'hyp3']; 
 else
     folder = 'w:\EMP_data\EMP_data\eeg_brainvision\';
     folder_subject_match = 'w:\EMP_data\EMP_data\eeg_brainvision\*.vhdr';
@@ -157,12 +160,16 @@ for subject = subjects_to_use
         electrode_id_str = ['ch_' num2str(electrode)];
         
         % ANG: re-ref
-        refM1 = loaded_raw_data_from_eeglab.data(69,:);
-        refM2 = loaded_raw_data_from_eeglab.data(70,:);
-        input_data_reref = (loaded_raw_data_from_eeglab.data(electrode,:) - (refM1 + refM2 / 2));
+        if use_reref
+            refM1 = loaded_raw_data_from_eeglab.data(69,:);
+            refM2 = loaded_raw_data_from_eeglab.data(70,:);
+            input_data = (loaded_raw_data_from_eeglab.data(electrode,:) - (refM1 + refM2 / 2));
+        else
+            input_data = loaded_raw_data_from_eeglab.data(electrode,:); % dont re-ref, just copy original
+        end
 
         % Apply filter
-        data = apply_filters(input_data_reref, sample_rate_hz, low_pass_upper_limit_hz);
+        data = apply_filters(input_data, sample_rate_hz, low_pass_upper_limit_hz);
         all_triggers_tmp = all_triggers;
 
         % toc; tic;
@@ -218,174 +225,27 @@ for subject = subjects_to_use
 
 end % for subjects_to_use
 
-
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%  Post processing I - calculate mean of all trials per subject, electrode and event
 subjects_to_use = 1:33;
 selected_electrodes = 1:72;
-postprocess_step1(folder_analysed_data, subjects_to_use, selected_electrodes, event_types, subject_files);
+subject_summary_filename = postprocess_step1(folder_analysed_data, subjects_to_use, selected_electrodes, event_types, subject_files);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Testing - mean across subjects
-% Here is make mean across all subjects and plot the results. We don't
-% save these results as they are calculated very fast
-load(subject_summary_filename, '-mat'); % variable: summary
+%% Analyse - FFT power spectral analysis
+selected_subjects = 1:5;
+selected_electrodes = [58 59 60 62];
+time_window_ms = [0 801];
+plot_spectral_analysis(subject_summary_filename, event_types, selected_subjects, selected_electrodes, time_window_ms, pre_stimulus_ms)
 
-for id = 1:size(event_types, 1)
-    event_type = event_types{id};
-    subject_erp_mean.(event_type) = [];
-end
-
-erp_matrix = [];
-leg = {};
-subjects_to_use = 1:33;
-total_subjects = 0;
-for subject = subjects_to_use
-    subject_id_str = ['subj_' num2str(subject)];
-    for id = 1:size(event_types, 1)
-        event_type = event_types{id};
-        erp_cell = struct2cell(summary.(subject_id_str).(event_type));
-        erp_matrix = cell2mat(erp_cell');
-
-        if isempty(subject_erp_mean.(event_type))
-            subject_erp_mean.(event_type) = erp_matrix;
-        end
-
-        subject_erp_mean.(event_type) = (subject_erp_mean.(event_type) + erp_matrix);
-    end
-
-    total_subjects = total_subjects + 1;
-end
-
-for id = 1:size(event_types, 1)
-    event_type = event_types{id};
-    subject_erp_mean.(event_type) = subject_erp_mean.(event_type) / total_subjects;
-end
-
-%% Hypothesis checking
-run_test = false;
-if (run_test)
-    selected_electrodes = [58 59 60 62];
-    % selected_electrodes = fronto_central_channels;
-    hyp_1 = mean(subject_erp_mean.manmade_new(:, selected_electrodes), 2);
-    hyp_2 = mean(subject_erp_mean.manmade_old(:, selected_electrodes), 2);
-    hyp_3 = mean(subject_erp_mean.natural_new(:, selected_electrodes), 2);
-    hyp_4 = mean(subject_erp_mean.natural_old(:, selected_electrodes), 2);
-    time_vector = 1/512*(1:length(hyp_1)) - pre_stimulus_ms / 1000;
-    figure; plot(time_vector, hyp_1, 'LineWidth', 4)
-    hold on
-    plot(time_vector, hyp_2, 'LineWidth', 4)
-    plot(time_vector, hyp_3, 'LineWidth', 4)
-    plot(time_vector, hyp_4, 'LineWidth', 4)
-    legend('manmade new', 'manmade old', 'natural new', 'natural old');
-end
- 
-
-if true
-    disp("Finished hyp3")
-    return;
-end
-
- 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Testing - FFT power spectral analysis
-
-for id = 1:size(event_types, 1)
-    event_type = event_types{id};
-    subject_erp_mean.(event_type) = [];
-end
-
-tic
-disp('Start spectral analysis...')
-erp_matrix = [];
-leg = {};
-total_subjects = 0;
-subjects_to_use = 1:33
-for subject = subjects_to_use
-    subject_id_str = ['subj_' num2str(subject)];
-    subject_id_str_for_plot = ['subj\_' num2str(subject)];
-    for id = 1:size(event_types, 1)
-        event_type = event_types{id};
-        erp_cell = struct2cell(summary.(subject_id_str).(event_type));
-        erp_matrix = cell2mat(erp_cell');
-        if isempty(subject_erp_mean.(event_type))
-            subject_erp_mean.(event_type) = erp_matrix;
-        end
-
-        subject_erp_mean.(event_type) = (subject_erp_mean.(event_type) + erp_matrix);
-    end
-    total_subjects = total_subjects + 1;
-end
-
-for id = 1:size(event_types, 1)
-    event_type = event_types{id};
-    subject_erp_mean.(event_type) = subject_erp_mean.(event_type) / total_subjects;
-end
-
-% Just for plotting
-plot_all = false;
-if (plot_all)
-    for subject = subjects_to_use
-        legevent = {};
-        hFigure = figure;
-        subject_id_str = ['subj_' num2str(subject)];
-        % axes('Position', [0 0 1 1])
-        for id = 1:size(event_types, 1)
-            event_type = event_types{id};
-            erp_cell = struct2cell(summary.(subject_id_str).(event_type));
-            erp_matrix = cell2mat(erp_cell');
-            time = (1:length(erp_matrix))/512;
-            plot(time*1000, mean(erp_matrix, 2))
-            hold on;
-            set(hFigure, 'MenuBar', 'none');
-            set(hFigure, 'ToolBar', 'none');
-            legevent(end+1) = event_type;
-        end
-        xlabel(["time [ms]"]);
-        title(subject_id_str);
-        legend(legevent);
-        ylim([-0.05 0.1])
-    end
-end
-
-%%-----------------
-% figure; pwelch(data, [], [], [], Fs);
-leg = {};
-for id = 1:size(event_types, 1)
-    event_type = event_types{id};
-    data = mean(subject_erp_mean.(event_type)(:, [58 59 60 61]), 2);
-    Fs = 512;            % Sampling frequency                    
-    dT = 1/Fs;           % Sampling period       
-    L = length(data);    % Length of signal
-    t = (0:L-1)*dT;      % Time vector
-    Y = fft(data);
-    P2 = abs(Y/L);
-    P1 = P2(1:L/2+1);
-    P1(2:end-1) = 2*P1(2:end-1);
-    f = Fs*(0:(L/2))/L;
-
-    plot(f,P1); hold on;
-    leg(end+1) = event_type;
-end
-
-legend(leg);
-xlim([0 20]);
-title('Single-Sided Amplitude Spectrum of S(t)')
-xlabel('f (Hz)')
-ylabel('|P1(f)|')
-
-% low, high = 0.5, 4 % alpha limits
-%%-----------------
-
-        % channel_spectral_power_density.(event_type).alpha_power = pwelch_alpha;
-        % channel_spectral_power_density.(event_type).beta_power = pwelch_beta;
-% Legend{iter}=strcat('Electrode', num2str(electrode));
-% iter = iter + 1;
-% legend(Legend);
-% Define delta lower and upper limits
-
-toc
+%% Analyse - Mean across subjects for all events (and selected electrodes)
+selected_subjects = 1:33;
+selected_electrodes = [58 59 60 62];
+plot_merged_subjects(subject_summary_filename, event_types, selected_subjects, selected_electrodes, pre_stimulus_ms);
