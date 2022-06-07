@@ -73,8 +73,8 @@ end
 folder_subject_root = fileparts(folder_subject_match); % not used/necessary in linux (!)
 subject_files = ls(folder_subject_match);
 subject_total = size(subject_files, 1);
-subjects_to_use = 1%:subject_total;
-electrodes_to_use = 1:5% 64;% fronto_central_channels;
+subjects_to_use = 1:subject_total;
+electrodes_to_use = 1:64;% fronto_central_channels;
 
 hypothesis_data.electrodes_to_use = electrodes_to_use;
 hypothesis_data.subjects_to_use = subjects_to_use;
@@ -82,6 +82,9 @@ hypothesis_data.subjects_to_use = subjects_to_use;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%  Processing I - Extract all ERPs based on event types
 process(hypothesis_data, folder_analysed_data, folder_subject_root, subject_files, subjects_to_use, folder_generated_data, electrodes_to_use, USE_REREF, DO_SPECTRAL_ANALYSIS)
+
+%%%%%  Processing II - Extract all ERPs based on event types
+eegdata_to_struct(hypothesis_data, folder_analysed_data)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%  Post processing - calculate mean of all trials; per subject, electrode and event
@@ -92,10 +95,10 @@ process(hypothesis_data, folder_analysed_data, folder_subject_root, subject_file
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%  Post processing - spectral analysis, high resolution
-subjects_to_use = 1:33;
-selected_electrodes = 1:64% fronto_central_channels;
-time_window_ms = [500 700]; % unreferenced
-summary_spectral = plot_spectral_analysis_high_res(hypothesis_data.sample_rate_hz, time_window_ms, folder_analysed_data, subjects_to_use, selected_electrodes, hypothesis_data.event_types, subject_files, hypothesis_data.pre_stimulus_ms);
+% subjects_to_use = 1:33;
+% selected_electrodes = 1:64% fronto_central_channels;
+% time_window_ms = [500 700]; % unreferenced
+% summary_spectral = plot_spectral_analysis_high_res(hypothesis_data.sample_rate_hz, time_window_ms, folder_analysed_data, subjects_to_use, selected_electrodes, hypothesis_data.event_types, subject_files, hypothesis_data.pre_stimulus_ms);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Post processing II - FFT power spectral analysis
