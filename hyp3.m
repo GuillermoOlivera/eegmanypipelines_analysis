@@ -14,7 +14,7 @@ end
 
 %% Choose experiment conditions
 hypothesis_data.event_info = struct();
-hypothesis_data.experiment_name = 'Hypothesis_3_highpass_0p5'
+hypothesis_data.experiment_name = 'Hypothesis_3_highpass_0p5_v2'
 hypothesis_data.event_types = {'manmade_old_hit' ;
                                 'manmade_old_miss' ;
                                 'natural_old_hit' ;
@@ -30,7 +30,7 @@ hypothesis_data.low_pass_upper_limit_hz = 30;
 hypothesis_data.high_pass_lower_limit_hz = 0.5;
 hypothesis_data.pre_stimulus_ms = 200;
 hypothesis_data.post_stimulus_ms = 800;
-hypothesis_data.baseline_correction_time_ms = 250;
+hypothesis_data.baseline_correction_time_ms = 200;
 
 
 

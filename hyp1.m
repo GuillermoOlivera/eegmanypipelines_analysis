@@ -12,12 +12,34 @@ end
 
 % eeglab;
 
-%% Choose experiment conditions
-use_reref = true;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Experiment conditions:
 
+%%
+% If we want to have accurate/testable results for the frequency analysis, its
+% best to not filter the data and not average out all the ERPs. Of couse the
+% disadvantage of this approach is a very big file that will be saved.
+%
+% Lets do this for one subject with limited amount electrodes to speed up and
+% after confirming plausible results run this for all subjects.
+%
+% Note: Only Hypothesis I asks for a specific time-interval from where to extract
+%       the theta, delta power. For the other hypothesis then time-range is free
+%       to choose from which means we have to do a spectogram + topoplot to choose
+%       correct time-range and electrodes.
+DO_SPECTRAL_ANALYSIS = true; if DO_SPECTRAL_ANALYSIS; dospectralanalysis = '_dospectralanalysis'; else; dospectralanalysis = ''; end;
+
+%%
+% We do a another pass to re-reference all the electrado voltage signal.
+%
+% Warning: If this electrode is "invalid" it will introduce noise to all our data
+USE_REREF = false; if USE_REREF; reref = '_reref'; else; reref = ''; end;
+
+%%
 hypothesis_data = struct();
-hypothesis_data.use_reref = use_reref;
-hypothesis_data.experiment_name = 'Hypothesis_1_highpass_0p5_v4';
+hypothesis_data.use_reref = USE_REREF;
+hypothesis_data.use_spectral_analysis = DO_SPECTRAL_ANALYSIS;
+hypothesis_data.experiment_name = ['Hypothesis_1_v08' reref dospectralanalysis];
 hypothesis_data.event_types = {'manmade' ;
                                'natural'};
 % Use the digit '6' to ignore code position
@@ -26,26 +48,17 @@ hypothesis_data.condition_values = [1666;
 hypothesis_data.num_trials = 1200; % only used for memory allocation
 hypothesis_data.sample_rate_hz = 512;
 hypothesis_data.low_pass_upper_limit_hz = 30;
-hypothesis_data.high_pass_lower_limit_hz = 0.5;
+hypothesis_data.high_pass_lower_limit_hz = 1.8; % We extract 1 second segments so it makes sense to filter above ~2Hz
 hypothesis_data.pre_stimulus_ms = 200;
 hypothesis_data.post_stimulus_ms = 800;
-hypothesis_data.baseline_correction_time_ms = 250;
-
-
-
-
-
-
+hypothesis_data.baseline_correction_time_ms = 200;
 
 %% Folder and file paths
-use_reref = true;
-if use_reref; reref = 'reref_'; else; reref = ''; end;
-
 if isOctave
     folder = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision';
     folder_subject_match = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/*.vhdr';
     folder_generated_data = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/_generated_matv7';
-    folder_analysed_data = ['/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/_analysed_' reref hypothesis_data.experiment_name]; 
+    folder_analysed_data = ['/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/_analysed_' hypothesis_data.experiment_name]; 
 else
     folder = 'w:\EMP_data\EMP_data\eeg_brainvision\';
     folder_subject_match = 'w:\EMP_data\EMP_data\eeg_brainvision\*.vhdr';
@@ -60,12 +73,15 @@ end
 folder_subject_root = fileparts(folder_subject_match); % not used/necessary in linux (!)
 subject_files = ls(folder_subject_match);
 subject_total = size(subject_files, 1);
-subjects_to_use = 1:subject_total;
-electrodes_to_use = 1:64% fronto_central_channels;
+subjects_to_use = 1%:subject_total;
+electrodes_to_use = 1:5% 64;% fronto_central_channels;
+
+hypothesis_data.electrodes_to_use = electrodes_to_use;
+hypothesis_data.subjects_to_use = subjects_to_use;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%  Processing I - Extract all ERPs based on events
-process(hypothesis_data, folder_analysed_data, folder_subject_root, subject_files, subjects_to_use, folder_generated_data, electrodes_to_use, use_reref)
+%%%%%  Processing I - Extract all ERPs based on event types
+process(hypothesis_data, folder_analysed_data, folder_subject_root, subject_files, subjects_to_use, folder_generated_data, electrodes_to_use, USE_REREF, DO_SPECTRAL_ANALYSIS)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%  Post processing - calculate mean of all trials; per subject, electrode and event

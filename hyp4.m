@@ -14,7 +14,7 @@ end
 
 %% Choose experiment conditions
 hypothesis_data.event_info = struct();
-hypothesis_data.experiment_name = 'Hypothesis_4_highpass_0p5'
+hypothesis_data.experiment_name = 'Hypothesis_4_highpass_0p5_v2'
 hypothesis_data.event_types = {'manmade_old_hit_subs_rem';% subsequently remembered
                'manmade_old_hit_subs_for';% subsequently forgotten
                'manmade_old_miss_subs_rem';
