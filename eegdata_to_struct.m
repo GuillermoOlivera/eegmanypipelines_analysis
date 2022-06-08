@@ -1,4 +1,4 @@
-function datastruct = eegdata_to_struct(hypothesis_data, folder)
+function datastruct = eegdata_to_struct(hypothesis_data, folder, only_log)
 
 % Remove all empty vectors and make a struct with data
 
@@ -27,8 +27,10 @@ for subj=1:subject_total
             for t = 1:trials
                 erp_vector = squeeze(electrodes_erp(event_id, electrode_id, t, :));
                 if mean(erp_vector) ~= 0
-                    erp_cell{electrode_id, counter} = erp_vector;
-                    erp_electrode_struct.(['electrode_' num2str(electrode_id)])(counter,:) = erp_vector;
+                    if only_log == false
+                        erp_cell{electrode_id, counter} = erp_vector;
+                        erp_electrode_struct.(['electrode_' num2str(electrode_id)])(counter,:) = erp_vector;
+                    end
                     counter = counter + 1;
                 end
             end
@@ -36,10 +38,15 @@ for subj=1:subject_total
             printf('LOG: %d, %s, %d, %d\n', subj, event_name, electrode_id, counter);
         end
 
-        erp.(event_name) = erp_electrode_struct;
+        if only_log == false
+            erp.(event_name) = erp_electrode_struct;
+        end
     end
 
-    save(savefile, 'erp', '-mat7-binary');
+    if only_log == false
+        save(savefile, 'erp', '-mat7-binary');
+    end
+
     disp('-------------------------------')
 end
 

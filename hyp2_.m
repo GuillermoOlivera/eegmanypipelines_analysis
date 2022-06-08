@@ -39,12 +39,18 @@ USE_REREF = false; if USE_REREF; reref = '_reref'; else; reref = ''; end;
 hypothesis_data = struct();
 hypothesis_data.use_reref = USE_REREF;
 hypothesis_data.use_spectral_analysis = DO_SPECTRAL_ANALYSIS;
-hypothesis_data.experiment_name = ['Hypothesis_1_v09' reref dospectralanalysis];
-hypothesis_data.event_types = {'manmade' ;
-                               'natural'};
+hypothesis_data.experiment_name = ['Hypothesis_2_v09' reref dospectralanalysis];
+
+hypothesis_data.event_types = {'manmade_new' ;
+              'manmade_old' ;
+               'natural_new' ;
+               'natural_old'}
 % Use the digit '6' to ignore code position
-hypothesis_data.condition_values = [1666;
-                                    2666];
+hypothesis_data.condition_values = [1066;
+                    1166;
+                    2066
+                    2166];
+
 hypothesis_data.num_trials = 1200; % only used for memory allocation
 hypothesis_data.sample_rate_hz = 512;
 hypothesis_data.low_pass_upper_limit_hz = 30;
@@ -84,8 +90,7 @@ hypothesis_data.subjects_to_use = subjects_to_use;
 process(hypothesis_data, folder_analysed_data, folder_subject_root, subject_files, subjects_to_use, folder_generated_data, electrodes_to_use, USE_REREF, DO_SPECTRAL_ANALYSIS)
 
 %%%%%  Processing II - Extract all ERPs based on event types
-only_log = true;  % skip saving just log
-eegdata_to_struct(hypothesis_data, folder_analysed_data, only_log)
+eegdata_to_struct(hypothesis_data, folder_analysed_data)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%  Post processing - calculate mean of all trials; per subject, electrode and event

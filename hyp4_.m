@@ -39,12 +39,26 @@ USE_REREF = false; if USE_REREF; reref = '_reref'; else; reref = ''; end;
 hypothesis_data = struct();
 hypothesis_data.use_reref = USE_REREF;
 hypothesis_data.use_spectral_analysis = DO_SPECTRAL_ANALYSIS;
-hypothesis_data.experiment_name = ['Hypothesis_1_v09' reref dospectralanalysis];
-hypothesis_data.event_types = {'manmade' ;
-                               'natural'};
-% Use the digit '6' to ignore code position
-hypothesis_data.condition_values = [1666;
-                                    2666];
+hypothesis_data.experiment_name = ['Hypothesis_4_v09' reref dospectralanalysis];
+
+hypothesis_data.event_types = {'manmade_old_hit_subs_rem';% subsequently remembered
+               'manmade_old_hit_subs_for';% subsequently forgotten
+               'manmade_old_miss_subs_rem';
+               'manmade_old_miss_subs_for';
+               'natural_old_hit_subs_rem';
+               'natural_old_hit_subs_for';
+               'natural_old_miss_subs_rem';
+               'natural_old_miss_subs_for'}
+
+hypothesis_data.condition_values = [1111;
+                    1110;
+                    1121
+                    1120
+                    2111
+                    2110
+                    2121
+                    2110];
+
 hypothesis_data.num_trials = 1200; % only used for memory allocation
 hypothesis_data.sample_rate_hz = 512;
 hypothesis_data.low_pass_upper_limit_hz = 30;
@@ -84,8 +98,7 @@ hypothesis_data.subjects_to_use = subjects_to_use;
 process(hypothesis_data, folder_analysed_data, folder_subject_root, subject_files, subjects_to_use, folder_generated_data, electrodes_to_use, USE_REREF, DO_SPECTRAL_ANALYSIS)
 
 %%%%%  Processing II - Extract all ERPs based on event types
-only_log = true;  % skip saving just log
-eegdata_to_struct(hypothesis_data, folder_analysed_data, only_log)
+eegdata_to_struct(hypothesis_data, folder_analysed_data)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%  Post processing - calculate mean of all trials; per subject, electrode and event
