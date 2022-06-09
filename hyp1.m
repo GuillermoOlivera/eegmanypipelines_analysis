@@ -85,21 +85,21 @@ process(hypothesis_data, folder_analysed_data, folder_subject_root, subject_file
 
 %%%%%  Processing II - Extract all ERPs based on event types
 only_log = true;  % skip saving just log
-eegdata_to_struct(hypothesis_data, folder_analysed_data, only_log)
+no_run = true
+eegdata_to_struct(hypothesis_data, folder_analysed_data, only_log, no_run)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%  Post processing - calculate mean of all trials; per subject, electrode and event
-
 % subjects_to_use = subjects_to_use;
 % selected_electrodes = electrodes_to_use;
 % subject_summary_filename = postprocess(folder_analysed_data, subjects_to_use, selected_electrodes, hypothesis_data.event_types, subject_files);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%  Post processing - spectral analysis, high resolution
-% subjects_to_use = 1:33;
-% selected_electrodes = 1:64% fronto_central_channels;
-% time_window_ms = [500 700]; % unreferenced
-% summary_spectral = plot_spectral_analysis_high_res(hypothesis_data.sample_rate_hz, time_window_ms, folder_analysed_data, subjects_to_use, selected_electrodes, hypothesis_data.event_types, subject_files, hypothesis_data.pre_stimulus_ms);
+subjects_to_use = 1:33;
+selected_electrodes = 1:64;% fronto_central_channels;
+time_window_ms = [500 700]; % unreferenced
+summary_spectral = spectral_analysis_high_res(hypothesis_data.sample_rate_hz, time_window_ms, folder_analysed_data, subjects_to_use, selected_electrodes, hypothesis_data.event_types, subject_files, hypothesis_data.pre_stimulus_ms);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Post processing II - FFT power spectral analysis

@@ -1,4 +1,8 @@
-function datastruct = eegdata_to_struct(hypothesis_data, folder, only_log)
+function datastruct = eegdata_to_struct(hypothesis_data, folder, only_log, no_run)
+
+if no_run == true
+    return;
+end
 
 % Remove all empty vectors and make a struct with data
 
