@@ -1,5 +1,6 @@
 function datastruct = eegdata_to_struct(hypothesis_data, folder, only_log, no_run)
 
+printf('Converting data into structure... ');
 if no_run == true
     return;
 end
@@ -12,6 +13,11 @@ subject_total = size(subject_files, 1);
 for subj=1:subject_total
     selected_subject_file = subject_files(subj, :)
     savefile = [selected_subject_file(1:end-4) '_struct.mat'];
+
+    if (exist(savefile, 'file') == 2)
+        continue;
+    end
+
     load(selected_subject_file);
 
     % Convert to struct
@@ -48,10 +54,12 @@ for subj=1:subject_total
     end
 
     if only_log == false
-        save(savefile, 'erp', '-mat7-binary');
+        erp_data = hypothesis_data;
+        save(savefile, 'erp', 'erp_data', '-mat7-binary');
     end
 
     disp('-------------------------------')
 end
 
+disp('Done.');
 end

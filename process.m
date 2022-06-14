@@ -1,4 +1,4 @@
-function process(hypothesis_data, folder_analysed_data, folder_subject_root, subject_files, subjects_to_use, folder_generated_data, electrodes_to_use, use_reref, do_spectral_analysis)
+function process(hypothesis_data, folder_analysed_data, folder_subject_root, subject_files, subjects_to_use, folder_generated_data, electrodes_to_use, use_reref, skip_filtering)
 % 1. Convert to mat file from brainvision file format with help of eeglab/plugin
 % 2. Load mat file and save ERPs for each condition in matrix
 
@@ -82,22 +82,25 @@ for subject = subjects_to_use
     data = [];
     all_triggers_tmp = [];
     electrodes_erp = struct();
-    for electrode = electrodes_to_use
+    for electrode= electrodes_to_use
+        % electrode = electrodes_to_use(electrode_idx);
         electrode_id_str = ['ch_' num2str(electrode)];
         for id = 1:size(event_types, 1)
             event_type = event_types{id};
             trial_str = [event_type '_trials_ok'];
             error_str = [event_type '_error_code'];
-            hypothesis_data.(trial_str) = zeros(max(electrodes_to_use), 1)';
-            hypothesis_data.(error_str) = zeros(max(electrodes_to_use), 1)';
+            hypothesis_data.(trial_str) = zeros(length(electrodes_to_use), 1)';
+            hypothesis_data.(error_str) = zeros(length(electrodes_to_use), 1)';
         end
     end
     electrodes_erp = zeros(size(event_types,1), length(electrodes_to_use), number_of_trials, ceil(sample_rate_hz*((pre_stimulus_ms + post_stimulus_ms)/1000)));
     counter = zeros(size(event_types, 1), length(electrodes_to_use));
-
+    counter_electrode = 0;
     for electrode = electrodes_to_use
         fprintf('%d ', electrode);
         electrode_id_str = ['ch_' num2str(electrode)];
+
+        counter_electrode = counter_electrode + 1;
 
         % ANG: re-ref
         if use_reref
@@ -107,9 +110,9 @@ for subject = subjects_to_use
         else
             input_data = loaded_raw_data_from_eeglab.data(electrode,:);
         end
-        
+
         % Apply filter or not
-        if do_spectral_analysis
+        if skip_filtering
             data = input_data;
         else
             data = apply_filters(input_data, sample_rate_hz, low_pass_upper_limit_hz, high_pass_lower_limit_hz);
@@ -118,12 +121,14 @@ for subject = subjects_to_use
         all_triggers_tmp = all_triggers;
 
         %% Important part starts here. Here we go through each defined event type (eg. manmade new, natural new, ...)
+        %counter_trial_ok = 0;
         for trigger_id = 1:number_of_trials
             trigger = all_triggers_tmp(trigger_id, 1);
             trigger_in_digits = fdec2base(trigger, 10) - '0';
 
             for id = 1:size(event_types, 1)
                 event_type = event_types{id};
+                counter_ok_segments = 1;
                 trial_str = [event_type '_trials_ok'];
                 error_str = [event_type '_error_code'];
                 condition_in_digits = event_info.(event_type).condition_to_use_in_digits;
@@ -148,10 +153,11 @@ for subject = subjects_to_use
 
                     % only takes good segments
                     if segment_ok == 1
-                        counter(id,electrode) = counter(id,electrode) + 1;
-                        hypothesis_data.(trial_str)(electrode) = hypothesis_data.(trial_str)(electrode) + 1; % count number of segments
+                        %counter_trial_ok = counter_trial_ok + 1;
+                        counter(id, counter_electrode) = counter(id, counter_electrode) + 1;
+                        hypothesis_data.(trial_str)(counter_electrode) = hypothesis_data.(trial_str)(counter_electrode) + 1; % count number of segments
                         bias = mean(channel_segment(1:baseline_correction_samples));
-                        electrodes_erp(id, electrode, counter(id,electrode), :) = channel_segment - bias;
+                        electrodes_erp(id,  counter_electrode, counter(id, counter_electrode), :) = channel_segment - bias;
                     end
                 end % end if is_match
             end % for trigger_id
