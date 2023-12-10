@@ -19,9 +19,11 @@ octave hyp1.m
 There are effects of image novelty (i.e., between images shown for the first time/new
 vs. repeated/old images) within the time-range from 300–500 ms ...
 
-a. on EEG voltage at fronto-central channels.\n
-b. on theta power at fronto-central channels.\n
-c. on alpha power at posterior channels.\n
+a. on EEG voltage at fronto-central channels.
+
+b. on theta power at fronto-central channels.
+
+c. on alpha power at posterior channels.
 
 #+begin_src bash
 octave hyp2.m
