@@ -36,40 +36,39 @@ DO_SPECTRAL_ANALYSIS = true; if DO_SPECTRAL_ANALYSIS; dospectralanalysis = '_dos
 USE_REREF = false; if USE_REREF; reref = '_reref'; else; reref = ''; end;
 
 %%
-hypothesis_data = struct();
-hypothesis_data.use_reref = USE_REREF;
-hypothesis_data.use_spectral_analysis = DO_SPECTRAL_ANALYSIS;
-hypothesis_data.experiment_name = ['Hypothesis_2_v09' reref dospectralanalysis];
-
-hypothesis_data.event_types = {'manmade_new' ;
+info = struct();
+info.use_reref = USE_REREF;
+info.use_spectral_analysis = DO_SPECTRAL_ANALYSIS;
+info.experiment_name = ['Hypothesis_2_v09' reref dospectralanalysis];
+info.event_types = {'manmade_new' ;
               'manmade_old' ;
                'natural_new' ;
                'natural_old'}
 % Use the digit '6' to ignore code position
-hypothesis_data.condition_values = [1066;
+info.condition_values = [1066;
                     1166;
                     2066
                     2166];
 
-hypothesis_data.num_trials = 1200; % only used for memory allocation
-hypothesis_data.sample_rate_hz = 512;
-hypothesis_data.low_pass_upper_limit_hz = 30;
-hypothesis_data.high_pass_lower_limit_hz = 1.8; % We extract 1 second segments so it makes sense to filter above ~2Hz
-hypothesis_data.pre_stimulus_ms = 200;
-hypothesis_data.post_stimulus_ms = 800;
-hypothesis_data.baseline_correction_time_ms = 200;
+info.num_trials = 1200; % only used for memory allocation
+info.sample_rate_hz = 512;
+info.low_pass_upper_limit_hz = 30;
+info.high_pass_lower_limit_hz = 1.8; % We extract 1 second segments so it makes sense to filter above ~2Hz
+info.pre_stimulus_ms = 200;
+info.post_stimulus_ms = 800;
+info.baseline_correction_time_ms = 200;
 
 %% Folder and file paths
 if isOctave
     folder = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision';
     folder_subject_match = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/*.vhdr';
     folder_generated_data = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/_generated_matv7';
-    folder_analysed_data = ['/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/_analysed_' hypothesis_data.experiment_name]; 
+    folder_analysed_data = ['/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/_analysed_' info.experiment_name]; 
 else
     folder = 'w:\EMP_data\EMP_data\eeg_brainvision\';
     folder_subject_match = 'w:\EMP_data\EMP_data\eeg_brainvision\*.vhdr';
     folder_generated_data = 'w:\EMP_data\EMP_data\eeg_brainvision\_generated_matv7';
-    folder_analysed_data = ['w:\EMP_data\EMP_data\eeg_brainvision\_analysed_' reref hypothesis_data.experiment_name];
+    folder_analysed_data = ['w:\EMP_data\EMP_data\eeg_brainvision\_analysed_' reref info.experiment_name];
 end
 
 if (exist(folder_analysed_data, 'file') == 0)
@@ -82,29 +81,29 @@ subject_total = size(subject_files, 1);
 subjects_to_use = 1:subject_total;
 electrodes_to_use = 1:64;% fronto_central_channels;
 
-hypothesis_data.electrodes_to_use = electrodes_to_use;
-hypothesis_data.subjects_to_use = subjects_to_use;
+info.electrodes_to_use = electrodes_to_use;
+info.subjects_to_use = subjects_to_use;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%  Processing I - Extract all ERPs based on event types
-process(hypothesis_data, folder_analysed_data, folder_subject_root, subject_files, subjects_to_use, folder_generated_data, electrodes_to_use, USE_REREF, DO_SPECTRAL_ANALYSIS)
+process(info, folder_analysed_data, folder_subject_root, subject_files, subjects_to_use, folder_generated_data, electrodes_to_use, USE_REREF, DO_SPECTRAL_ANALYSIS)
 
 %%%%%  Processing II - Extract all ERPs based on event types
-eegdata_to_struct(hypothesis_data, folder_analysed_data)
+eegdata_to_struct(info, folder_analysed_data)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%  Post processing - calculate mean of all trials; per subject, electrode and event
 
 % subjects_to_use = subjects_to_use;
 % selected_electrodes = electrodes_to_use;
-% subject_summary_filename = postprocess(folder_analysed_data, subjects_to_use, selected_electrodes, hypothesis_data.event_types, subject_files);
+% subject_summary_filename = postprocess(folder_analysed_data, subjects_to_use, selected_electrodes, info.event_types, subject_files);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%  Post processing - spectral analysis, high resolution
 % subjects_to_use = 1:33;
 % selected_electrodes = 1:64% fronto_central_channels;
 % time_window_ms = [500 700]; % unreferenced
-% summary_spectral = plot_spectral_analysis_high_res(hypothesis_data.sample_rate_hz, time_window_ms, folder_analysed_data, subjects_to_use, selected_electrodes, hypothesis_data.event_types, subject_files, hypothesis_data.pre_stimulus_ms);
+% summary_spectral = plot_spectral_analysis_high_res(info.sample_rate_hz, time_window_ms, folder_analysed_data, subjects_to_use, selected_electrodes, info.event_types, subject_files, info.pre_stimulus_ms);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Post processing II - FFT power spectral analysis
@@ -112,11 +111,11 @@ eegdata_to_struct(hypothesis_data, folder_analysed_data)
 % selected_subjects = subjects_to_use;
 % selected_electrodes = [58 59 60 62];
 % time_window_ms = [200 800]; % unreferenced
-% plot_spectral_analysis(subject_summary_filename, hypothesis_data.event_types, selected_subjects, selected_electrodes, time_window_ms, hypothesis_data.pre_stimulus_ms)
+% plot_spectral_analysis(subject_summary_filename, info.event_types, selected_subjects, selected_electrodes, time_window_ms, info.pre_stimulus_ms)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Post processing III - Calculate mean
 
 % selected_subjects = subjects_to_use;
 % selected_electrodes = [58 59 60 62];
-% plot_merged_subjects(subject_summary_filename, hypothesis_data.event_types, selected_subjects, selected_electrodes, hypothesis_data.pre_stimulus_ms);
+% plot_merged_subjects(subject_summary_filename, info.event_types, selected_subjects, selected_electrodes, info.pre_stimulus_ms);

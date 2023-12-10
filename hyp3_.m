@@ -39,7 +39,7 @@ USE_REREF = false; if USE_REREF; reref = '_reref'; else; reref = ''; end;
 hypothesis_data = struct();
 hypothesis_data.use_reref = USE_REREF;
 hypothesis_data.use_spectral_analysis = DO_SPECTRAL_ANALYSIS;
-hypothesis_data.experiment_name = ['Hypothesis_3_v09' reref dospectralanalysis];
+hypothesis_data.experiment_name = ['Hypothesis_3' reref dospectralanalysis];
 
 hypothesis_data.event_types = {'manmade_old_hit' ;
                                 'manmade_old_miss' ;

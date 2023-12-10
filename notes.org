@@ -1,6 +1,5 @@
 * Hypothesis
 The objective of your data analysis is to test the following hypotheses:
-
 ** First Hypothesis - scene category effect
 There is an effect of scene category (i.e., a difference between images showing
 man-made vs. natural environments) on the amplitude of the N1 component, i.e. the
@@ -29,7 +28,6 @@ be successfully remembered vs. forgotten on a subsequent repetition) ...
 a. on EEG voltage at any channels, at any time.
 b. on spectral power, at any frequencies, at any channels, at any time.
 
-
 * Processing scripts
 
 Requirements [6/11]:
@@ -49,13 +47,11 @@ Requirements [6/11]:
 
 - What/where are fronto-central channels? How many? -> [[file:/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/channel_locations/chanlocs_besa.txt][manypipelines channel locations]]
 
-  
 * <2022-04-27 Wed> log
 
 - Check channel 59, manmade old
  [[file:images/2022-04-27_18-02.png][See screenshot here]] 
 
- 
 * <2022-05-13 Fri> log
 
 %% Channel position for hypothesis 2 - NOT USED YET

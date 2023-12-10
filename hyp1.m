@@ -32,15 +32,15 @@ DO_SPECTRAL_ANALYSIS = false; if DO_SPECTRAL_ANALYSIS; dospectralanalysis = '_do
 % We do a another pass to re-reference all the electrado voltage signal.
 %
 % Warning: If this electrode is "invalid" it will introduce noise to all our data
-USE_REREF = false; if USE_REREF; reref = '_reref'; else; reref = ''; end;
+USE_REREF = true; if USE_REREF; reref = '_reref'; else; reref = ''; end;
 
 %%
 info = struct();
 info.use_reref = USE_REREF;
 info.use_spectral_analysis = DO_SPECTRAL_ANALYSIS;
-info.experiment_name = ['Hypothesis_1_v10' reref dospectralanalysis];
+info.experiment_name = ['Hypothesis_1' reref dospectralanalysis];
 info.event_types = {'manmade' ;
-                               'natural'};
+                    'natural'};
 % Use the digit '6' to ignore code position
 info.condition_values = [1666;
                         2666];
@@ -48,7 +48,7 @@ info.num_trials = 1200; % only used for memory allocation
 info.sample_rate_hz = 512;
 info.low_pass_upper_limit_hz = 30;
 info.high_pass_lower_limit_hz = 4;
-info.pre_stimulus_ms = 500;
+info.pre_stimulus_ms = 200;
 info.post_stimulus_ms = 1100;
 info.baseline_correction_time_ms = 200;
 
@@ -74,22 +74,20 @@ subject_files = ls(folder_subject_match);
 subject_total = size(subject_files, 1);
 subjects_to_use = 1:subject_total;
 
-fronto_central_channels = [9, 10, 11, 44, 45, 46, 47];
-electrodes_to_use = fronto_central_channels;
-
+electrodes_to_use = 1:64;
 info.electrodes_to_use = electrodes_to_use;
 info.subjects_to_use = subjects_to_use;
 
 % Referenced to pre_stimulus_ms. For min frequency reconstruction at least
 % two full cycles needed ie, 200 ms -> 100 ms -> 10 Hz
-info.spectra_time_window_ms = [300 500];
+info.spectra_time_window_ms = [100 500];
 
-info.spectra_selected_electrodes = 1:64;
-info.spectra_subjects_to_use = subjects_to_use;
+info.spectra_selected_electrodes = info.electrodes_to_use;
+info.spectra_subjects_to_use = info.subjects_to_use;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%  Processing I - Extract all ERPs based on event types
-process(info, folder_analysed_data, folder_subject_root, subject_files, subjects_to_use, folder_generated_data, electrodes_to_use, USE_REREF, DO_SPECTRAL_ANALYSIS)
+process(info, folder_analysed_data, folder_subject_root, subject_files, folder_generated_data, USE_REREF, DO_SPECTRAL_ANALYSIS)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%  Processing II - Extract all ERPs based on event types

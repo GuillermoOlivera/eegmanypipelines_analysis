@@ -1,0 +1,52 @@
+* Requirements
+#+begin_src bash
+sudo apt-get install octave
+sudo apt-get install octave-signal
+#+end_src
+
+* Objective and analysis
+The objective of your data analysis is to test the following hypotheses:
+** First Hypothesis - scene category effect
+There is an effect of scene category (i.e., a difference between images showing
+man-made vs. natural environments) on the amplitude of the N1 component, i.e. the
+first major negative EEG voltage deflection.
+
+#+begin_src bash
+octave hyp1.m
+#+end_src
+
+** Second Hypothesis - image novelty
+There are effects of image novelty (i.e., between images shown for the first time/new
+vs. repeated/old images) within the time-range from 300–500 ms ...
+
+a. on EEG voltage at fronto-central channels.
+b. on theta power at fronto-central channels.
+c. on alpha power at posterior channels.
+
+#+begin_src bash
+octave hyp2.m
+#+end_src
+
+** Third Hypothesis - "succesfully" detect old images
+There are effects of successful recognition of old images (i.e., a difference between
+old images correctly recognized as old [hits] vs. old images incorrectly judged as new
+[misses]) ...
+
+a. on EEG voltage at any channels, at any time.
+b. on spectral power, at any frequencies, at any channels, at any time.
+
+#+begin_src bash
+octave hyp3.m
+#+end_src
+
+** Fourth Hypothesis - subsequent memory (?)
+There are effects of subsequent memory (i.e., a difference between images that will
+be successfully remembered vs. forgotten on a subsequent repetition) ...
+
+a. on EEG voltage at any channels, at any time.
+b. on spectral power, at any frequencies, at any channels, at any time.
+
+#+begin_src bash
+octave hyp4.m
+#+end_src
+

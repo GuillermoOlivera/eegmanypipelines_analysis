@@ -1,18 +1,20 @@
-function process(hypothesis_data, folder_analysed_data, folder_subject_root, subject_files, subjects_to_use, folder_generated_data, electrodes_to_use, use_reref, skip_filtering)
+function process(info, folder_analysed_data, folder_subject_root, subject_files, folder_generated_data, use_reref, skip_filtering)
 % 1. Convert to mat file from brainvision file format with help of eeglab/plugin
 % 2. Load mat file and save ERPs for each condition in matrix
 
 isOctave = exist('OCTAVE_VERSION', 'builtin') ~= 0;
 
-event_types = hypothesis_data.event_types;
-condition_values = hypothesis_data.condition_values;
-num_trials = hypothesis_data.num_trials;
-sample_rate_hz = hypothesis_data.sample_rate_hz;
-low_pass_upper_limit_hz = hypothesis_data.low_pass_upper_limit_hz;
-high_pass_lower_limit_hz = hypothesis_data.high_pass_lower_limit_hz;
-pre_stimulus_ms = hypothesis_data.pre_stimulus_ms;
-post_stimulus_ms = hypothesis_data.post_stimulus_ms;
-baseline_correction_time_ms = hypothesis_data.baseline_correction_time_ms;
+electrodes_to_use = info.electrodes_to_use;
+subjects_to_use = info.subjects_to_use;
+event_types = info.event_types;
+condition_values = info.condition_values;
+num_trials = info.num_trials;
+sample_rate_hz = info.sample_rate_hz;
+low_pass_upper_limit_hz = info.low_pass_upper_limit_hz;
+high_pass_lower_limit_hz = info.high_pass_lower_limit_hz;
+pre_stimulus_ms = info.pre_stimulus_ms;
+post_stimulus_ms = info.post_stimulus_ms;
+baseline_correction_time_ms = info.baseline_correction_time_ms;
 
 for id = 1:size(event_types, 1)
     event_type = event_types{id};
@@ -25,13 +27,13 @@ pre_stimulus = floor(pre_stimulus_ms / 1000 * sample_rate_hz);
 post_stimulus = floor(post_stimulus_ms / 1000 * sample_rate_hz);
 length_segment = pre_stimulus + post_stimulus + 1;
 
-%hypothesis_data = struct();
-%hypothesis_data.num_trials = num_trials;
-%hypothesis_data.pre_stimulus_ms = pre_stimulus_ms;
-%hypothesis_data.post_stimulus_ms = post_stimulus_ms;
-%hypothesis_data.length_segment_sanity_check = length_segment;
-%hypothesis_data.sample_rate_hz = sample_rate_hz;
-%hypothesis_data.low_pass_upper_limit_hz = low_pass_upper_limit_hz;
+%info = struct();
+%info.num_trials = num_trials;
+%info.pre_stimulus_ms = pre_stimulus_ms;
+%info.post_stimulus_ms = post_stimulus_ms;
+%info.length_segment_sanity_check = length_segment;
+%info.sample_rate_hz = sample_rate_hz;
+%info.low_pass_upper_limit_hz = low_pass_upper_limit_hz;
 
 %% Memory pre-allocation
 all_segments_erp = struct();
@@ -89,8 +91,8 @@ for subject = subjects_to_use
             event_type = event_types{id};
             trial_str = [event_type '_trials_ok'];
             error_str = [event_type '_error_code'];
-            hypothesis_data.(trial_str) = zeros(length(electrodes_to_use), 1)';
-            hypothesis_data.(error_str) = zeros(length(electrodes_to_use), 1)';
+            info.(trial_str) = zeros(length(electrodes_to_use), 1)';
+            info.(error_str) = zeros(length(electrodes_to_use), 1)';
         end
     end
     electrodes_erp = zeros(size(event_types,1), length(electrodes_to_use), number_of_trials, ceil(sample_rate_hz*((pre_stimulus_ms + post_stimulus_ms)/1000)));
@@ -147,7 +149,7 @@ for subject = subjects_to_use
                     veog_not_ok = (max(vEOG_data(selected_datapoints)) - min(vEOG_data(selected_datapoints)) > 160);
                     heog_not_ok = (max(hEOG_data(selected_datapoints)) - min(hEOG_data(selected_datapoints)) > 160); % paul, 160(80),120(60),60(30)/luck,200(100),160(80),160(80)
                     if ch_not_ok || veog_not_ok || heog_not_ok
-                        hypothesis_data.(error_str)(electrode) = 1*ch_not_ok + 10*veog_not_ok + 100*heog_not_ok;
+                        info.(error_str)(electrode) = 1*ch_not_ok + 10*veog_not_ok + 100*heog_not_ok;
                         segment_ok = 0;
                     end
 
@@ -155,7 +157,7 @@ for subject = subjects_to_use
                     if segment_ok == 1
                         %counter_trial_ok = counter_trial_ok + 1;
                         counter(id, counter_electrode) = counter(id, counter_electrode) + 1;
-                        hypothesis_data.(trial_str)(counter_electrode) = hypothesis_data.(trial_str)(counter_electrode) + 1; % count number of segments
+                        info.(trial_str)(counter_electrode) = info.(trial_str)(counter_electrode) + 1; % count number of segments
                         bias = mean(channel_segment(1:baseline_correction_samples));
                         electrodes_erp(id,  counter_electrode, counter(id, counter_electrode), :) = channel_segment - bias;
                     end
@@ -164,7 +166,7 @@ for subject = subjects_to_use
         end % for id = 1:size(event_types, 1)
     end % for electrodes_to_use
 
-    electrodes_erp_info = hypothesis_data;
+    electrodes_erp_info = info;
     electrodes_erp_counter = counter;
     save(subject_analysis_filename, 'electrodes_erp*', '-mat7-binary') % in Octave can also use hdf5 output format '-hdf5'
     toc; disp('Analysis done.')
