@@ -4,6 +4,12 @@ sudo apt-get install octave
 sudo apt-get install octave-signal
 #+end_src
 
+#+begin_src bash
+mkdir dependencies && cd dependencies
+git clone https://github.com/sccn/bva-io
+git clone https://github.com/sccn/eeglab
+#+end_src
+
 * Objective and analysis
 The objective of the data analysis is to test the following hypotheses:
 ** First Hypothesis - scene category effect

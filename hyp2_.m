@@ -4,9 +4,9 @@ clear all; clc; tic;
 isOctave = exist('OCTAVE_VERSION', 'builtin') ~= 0;
 
 if isOctave
-    addpath('/media/cygnuseco/ext4_files/research/src/')
-    addpath('/media/cygnuseco/ext4_files/research/eeglab-2022.0')
-    addpath('/media/cygnuseco/ext4_files/research/bva-io')
+    addpath('../research/src/')
+    addpath('../research/eeglab-2022.0')
+    addpath('../research/bva-io')
     pkg load signal
 end
 
@@ -60,10 +60,10 @@ info.baseline_correction_time_ms = 200;
 
 %% Folder and file paths
 if isOctave
-    folder = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision';
-    folder_subject_match = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/*.vhdr';
-    folder_generated_data = '/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/_generated_matv7';
-    folder_analysed_data = ['/media/cygnuseco/ext4_files/research/EMP_data/EMP_data/eeg_brainvision/_analysed_' info.experiment_name]; 
+    folder = '../research/EMP_data/EMP_data/eeg_brainvision';
+    folder_subject_match = '../research/EMP_data/EMP_data/eeg_brainvision/*.vhdr';
+    folder_generated_data = '../research/EMP_data/EMP_data/eeg_brainvision/_generated_matv7';
+    folder_analysed_data = ['../research/EMP_data/EMP_data/eeg_brainvision/_analysed_' info.experiment_name]; 
 else
     folder = 'w:\EMP_data\EMP_data\eeg_brainvision\';
     folder_subject_match = 'w:\EMP_data\EMP_data\eeg_brainvision\*.vhdr';
