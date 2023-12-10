@@ -19,11 +19,9 @@ octave hyp1.m
 There are effects of image novelty (i.e., between images shown for the first time/new
 vs. repeated/old images) within the time-range from 300–500 ms ...
 
-a. on EEG voltage at fronto-central channels.
-
-b. on theta power at fronto-central channels.
-
-c. on alpha power at posterior channels.
+1. on EEG voltage at fronto-central channels
+2. on theta power at fronto-central channels
+3. on alpha power at posterior channels
 
 #+begin_src bash
 octave hyp2.m
@@ -34,8 +32,8 @@ There are effects of successful recognition of old images (i.e., a difference be
 old images correctly recognized as old [hits] vs. old images incorrectly judged as new
 [misses]) ...
 
-a. on EEG voltage at any channels, at any time.
-b. on spectral power, at any frequencies, at any channels, at any time.
+1. on EEG voltage at any channels, at any time
+2. on spectral power, at any frequencies, at any channels, at any time
 
 #+begin_src bash
 octave hyp3.m
@@ -45,8 +43,8 @@ octave hyp3.m
 There are effects of subsequent memory (i.e., a difference between images that will
 be successfully remembered vs. forgotten on a subsequent repetition) ...
 
-a. on EEG voltage at any channels, at any time.
-b. on spectral power, at any frequencies, at any channels, at any time.
+1. on EEG voltage at any channels, at any time
+2. on spectral power, at any frequencies, at any channels, at any time
 
 #+begin_src bash
 octave hyp4.m
