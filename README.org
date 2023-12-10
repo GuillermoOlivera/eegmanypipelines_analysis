@@ -5,7 +5,7 @@ sudo apt-get install octave-signal
 #+end_src
 
 * Objective and analysis
-The objective of your data analysis is to test the following hypotheses:
+The objective of the data analysis is to test the following hypotheses:
 ** First Hypothesis - scene category effect
 There is an effect of scene category (i.e., a difference between images showing
 man-made vs. natural environments) on the amplitude of the N1 component, i.e. the
@@ -19,9 +19,9 @@ octave hyp1.m
 There are effects of image novelty (i.e., between images shown for the first time/new
 vs. repeated/old images) within the time-range from 300–500 ms ...
 
-a. on EEG voltage at fronto-central channels.
-b. on theta power at fronto-central channels.
-c. on alpha power at posterior channels.
+a. on EEG voltage at fronto-central channels.\n
+b. on theta power at fronto-central channels.\n
+c. on alpha power at posterior channels.\n
 
 #+begin_src bash
 octave hyp2.m
@@ -39,7 +39,7 @@ b. on spectral power, at any frequencies, at any channels, at any time.
 octave hyp3.m
 #+end_src
 
-** Fourth Hypothesis - subsequent memory (?)
+** Fourth Hypothesis - subsequent memory
 There are effects of subsequent memory (i.e., a difference between images that will
 be successfully remembered vs. forgotten on a subsequent repetition) ...
 
